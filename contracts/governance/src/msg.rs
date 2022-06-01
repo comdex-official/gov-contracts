@@ -73,7 +73,7 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
     ListAppProposal {
-        proposal_id: u64,
+        app_id: u64,
     },
     Test{ query:ComdexQuery}
 }

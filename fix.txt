@@ -1,0 +1,8 @@
+
+1. Fix threshold query (update to normal after testing)
+2. Fix proposal by app (wrong arguement name)
+3. Fix execute message afte test (test message)
+4. Show title of proposal in query                          (fixed)
+5. Fix error messages in execute refund (Proposal must expire before you can close it)
+
+

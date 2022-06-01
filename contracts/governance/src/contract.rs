@@ -8,7 +8,7 @@ use cosmwasm_std::{
 };
 use crate::coin_helpers::assert_sent_sufficient_coin;
 use comdex_bindings::ComdexMessages;
-use comdex_bindings::{ComdexQuery,StateResponse,MessageValidateResponse};
+use comdex_bindings::{ComdexQuery,MessageValidateResponse};
 use cw2::set_contract_version;
 use cw3::{
     ProposalListResponse, ProposalResponse, Status, Vote, VoteInfo, VoteListResponse, VoteResponse,
@@ -34,6 +34,7 @@ pub fn instantiate(
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+
     match msg.threshold {
         Threshold::AbsoluteCount{weight:_}=> return Err(ContractError::AbsoluteCountNotAccepted {}),
         Threshold::AbsolutePercentage{percentage:_}=> return Err(ContractError::AbsolutePercentageNotAccepted {}),
@@ -154,6 +155,13 @@ pub fn execute_propose(
 
     assert_sent_sufficient_coin(&info.funds,  Some(min_deposit))?;
 
+    //Check if no other deposit provided other than gov token deposit
+
+    let funds_len=info.funds.len();
+    
+    if funds_len>1{
+        return Err(ContractError::AdditionalDenomDeposit {})
+    }
     //check if gov denom exists in user deposit
 
     let mut is_correct_denom=false;
@@ -173,39 +181,53 @@ pub fn execute_propose(
             ComdexMessages::MsgWhiteListAssetLocker{app_mapping_id,asset_id}=>whitelistassetlockereligible(deps.as_ref(),app_mapping_id,asset_id,app_id)?,
             ComdexMessages::MsgWhitelistAppIdLockerRewards{app_mapping_id,asset_id}=>whitelistassetlockerrewards(deps.as_ref(),app_mapping_id,asset_id,app_id)?,
             ComdexMessages::MsgWhitelistAppIdVaultInterest{app_mapping_id}=>whitelistappidvaultinterest(deps.as_ref(),app_mapping_id,app_id)?,
-            ComdexMessages::MsgAddExtendedPairsVault{app_mapping_id,pair_id,liquidation_ratio:_,
-            stability_fee,closing_fee,liquidation_penalty:_,draw_down_fee,
-            is_vault_active:_,debt_ceiling,debt_floor,is_psm_pair:_,
-            min_cr:_,pair_name,asset_out_oracle_price:_,assset_out_price:_}=>addextendedpairvault(deps.as_ref(),app_mapping_id,
-            pair_id,
-            stability_fee,
-            closing_fee,
-            draw_down_fee,
-            debt_ceiling,
-            debt_floor,
-            pair_name,app_id)?,
-            ComdexMessages::MsgSetCollectorLookupTable{app_mapping_id ,
-                collector_asset_id ,
-                secondary_asset_id ,
-                surplus_threshold:_ ,
-                debt_threshold:_,
-                locker_saving_rate:_,
-                lot_size:_ ,
-                bid_factor:_} =>collectorlookuptable(deps.as_ref(),app_mapping_id,collector_asset_id,secondary_asset_id,app_id)?,
+            ComdexMessages::MsgAddExtendedPairsVault{app_mapping_id,
+                                                    pair_id,
+                                                    liquidation_ratio:_,
+                                                    stability_fee,
+                                                    closing_fee,
+                                                    liquidation_penalty:_,
+                                                    draw_down_fee,
+                                                    is_vault_active:_,
+                                                    debt_ceiling,
+                                                    debt_floor,
+                                                    is_psm_pair:_,
+                                                    min_cr:_,
+                                                    pair_name,
+                                                    asset_out_oracle_price:_,
+                                                    assset_out_price:_} =>addextendedpairvault(deps.as_ref(),app_mapping_id,pair_id,stability_fee,closing_fee,
+                                                                                               draw_down_fee,debt_ceiling,debt_floor,pair_name,app_id)?,
+            ComdexMessages::MsgSetCollectorLookupTable{ app_mapping_id ,
+                                                        collector_asset_id ,
+                                                        secondary_asset_id ,
+                                                        surplus_threshold:_ ,
+                                                        debt_threshold:_,
+                                                        locker_saving_rate:_,
+                                                        lot_size:_ ,bid_factor:_} =>collectorlookuptable(deps.as_ref(),app_mapping_id,collector_asset_id,secondary_asset_id,app_id)?,
 
-            ComdexMessages::MsgUpdateLsrInPairsVault{app_mapping_id,ext_pair_id,liquidation_ratio:_,stability_fee:_,closing_fee:_,
-                liquidation_penalty:_,draw_down_fee:_,min_cr:_,debt_ceiling:_,debt_floor:_
-            }=>updatepairvaultstability(deps.as_ref(),app_mapping_id,ext_pair_id,app_id)?,
+             ComdexMessages::MsgUpdateLsrInPairsVault{app_mapping_id,
+                                                      ext_pair_id,
+                                                      liquidation_ratio:_,
+                                                      stability_fee:_,
+                                                      closing_fee:_,
+                                                      liquidation_penalty:_,
+                                                      draw_down_fee:_,
+                                                      min_cr:_,
+                                                      debt_ceiling:_,
+                                                      debt_floor:_}=>updatepairvaultstability(deps.as_ref(),app_mapping_id,ext_pair_id,app_id)?,
 
 
-            ComdexMessages::MsgSetAuctionMappingForApp{app_mapping_id,asset_id:_,is_surplus_auction:_,is_debt_auction:_} =>
-            auctionmappingforapp(deps.as_ref(),app_mapping_id,app_id)?,
+            ComdexMessages::MsgSetAuctionMappingForApp{app_mapping_id,
+                                                    asset_id:_,
+                                                    is_surplus_auction:_,
+                                                    is_debt_auction:_} =>auctionmappingforapp(deps.as_ref(),app_mapping_id,app_id)?,
 
             ComdexMessages::MsgUpdateLsrInCollectorLookupTable{app_mapping_id,asset_id,lsr:_}=>updatelockerlsr(deps.as_ref(),app_mapping_id,asset_id,app_id)?
                 
 
         }
     }
+
     // create a proposal
     let mut prop = Proposal {
         title,
@@ -274,9 +296,9 @@ pub fn execute_vote(
     let proposal_height=prop.start_height;
     let cfg = CONFIG.load(deps.storage)?;
     let token_denom=&prop.token_denom;
+    
     //Get Voter power at proposal height 
     let voting_power=query_owner_token_at_height(deps.as_ref(),info.sender.to_string(),token_denom.to_string(),proposal_height.to_string(),cfg.target)?;
-
 
     // cast vote if no vote previously cast
     BALLOTS.update(deps.storage, (proposal_id, &info.sender), |bal| match bal {
@@ -305,7 +327,7 @@ pub fn execute_execute(
     info: MessageInfo,
     proposal_id: u64,
 ) -> Result<Response<ComdexMessages>, ContractError> {
-    // anyone can trigger this if the vote passed
+    // anyone can trigger the execution if the vote passed
 
     let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
     // we allow execution even after the proposal "expiration" as long as all vote come in before
@@ -314,6 +336,7 @@ pub fn execute_execute(
         return Err(ContractError::WrongExecuteStatus {});
     }
 
+    //cannot be executed until voting period is expired
     if !prop.expires.is_expired(&env.block) {
         return Err(ContractError::NotExpiredYet {});
     }
@@ -377,7 +400,7 @@ pub fn query(deps: Deps<ComdexQuery>, env: Env, msg: QueryMsg) -> StdResult<Bina
     match msg {
         QueryMsg::Test {query} => to_binary(&get_test(deps,query)?),
 
-        QueryMsg::Threshold {proposal_id} => to_binary(&get_token_supply1(deps)?),
+        QueryMsg::Threshold {proposal_id} => to_binary(&query_threshold(deps,proposal_id)?),
         QueryMsg::Proposal { proposal_id } => to_binary(&query_proposal(deps, env, proposal_id)?),
         QueryMsg::Vote { proposal_id, voter } => to_binary(&query_vote(deps, proposal_id, voter)?),
         QueryMsg::ListProposals { start_after, limit } => {
@@ -392,7 +415,7 @@ pub fn query(deps: Deps<ComdexQuery>, env: Env, msg: QueryMsg) -> StdResult<Bina
             start_after,
             limit,
         } => to_binary(&list_votes(deps, proposal_id, start_after, limit)?),
-        QueryMsg::ListAppProposal { proposal_id } => to_binary(&get_proposals_by_app(deps, proposal_id)?),
+        QueryMsg::ListAppProposal { app_id } => to_binary(&get_proposals_by_app(deps, app_id)?),
         
     }
 }
@@ -404,15 +427,7 @@ fn get_test(deps: Deps<ComdexQuery>,query:ComdexQuery) -> StdResult<MessageValid
     Ok(voting_power)
 }
 
- fn get_token_supply1(deps: Deps<ComdexQuery>) -> StdResult<StateResponse> {
-    let voting_power=deps
-    .querier
-    .query::<StateResponse>(&QueryRequest::Custom(
-        ComdexQuery::State {address: "comdex1chgn3mkwe646jcd9lrupwtf5f6p6930lzmsa7w".to_string(), denom: "ucmdx".to_string(),height:"3000".to_string(),target:"0.0.0.0:9090".to_string()}
-    ))?;
-    
-    Ok(voting_power)
-}
+
 
 fn query_threshold(deps: Deps<ComdexQuery>,proposal_id:u64) -> StdResult<ThresholdResponse> {
     let cfg = CONFIG.load(deps.storage)?;
@@ -458,8 +473,8 @@ fn list_proposals(
     Ok(ProposalListResponse { proposals })
 }
 
-fn get_proposals_by_app(deps: Deps<ComdexQuery>,proposal_id: u64) -> StdResult<Vec<u64>> {
-    let info= match PROPOSALSBYAPP.may_load(deps.storage,proposal_id )?{ 
+fn get_proposals_by_app(deps: Deps<ComdexQuery>,app_id : u64) -> StdResult<Vec<u64>> {
+    let info= match PROPOSALSBYAPP.may_load(deps.storage,app_id )?{ 
             Some(record) => Some(record),
             None => Some(vec![]) 
     };

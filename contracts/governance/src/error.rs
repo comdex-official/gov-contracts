@@ -14,6 +14,10 @@ pub enum ContractError {
     #[error("Required weight cannot be zero")]
     ZeroWeight {},
 
+    #[error("Additional denom deposit detected")]
+    AdditionalDenomDeposit {},
+
+
     #[error("Not possible to reach required (passing) weight")]
     UnreachableWeight {},
 
@@ -44,7 +48,7 @@ pub enum ContractError {
     #[error("Proposal voting period has not expired , cannot execute the proposal message")]
     NotExpiredYet {},
 
-    #[error("Proposal must expire before you can close it")]
+    #[error("Proposal must expire before you can claim refund it")]
     NotExpired {},
 
     #[error("Governance token does not exist for app")]

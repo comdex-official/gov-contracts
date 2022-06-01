@@ -1,3 +1,6 @@
+
+wallet:    comdex1ykm3v5ewnn4p5kuzp9hm6xnfmqjw57k4fz6xql
+
 ////// upload////////
 
 
@@ -23,15 +26,19 @@ comdex tx wasm instantiate 1  "$INIT" --from cooluser  --keyring-backend test --
 EXECUTE='{"propose":
             {"title":"new proposal",
              "description" :"test proposal",
-             "msgs" : [{"msg_white_list_asset_locker":{"app_mapping_id":1,"asset_id":1}}],
-             "app_id" :1
+             "msgs" : [{"msg_white_list_asset_locker":{"app_mapping_id":3,"asset_id":3}}],
+             "app_id" :3
             }}'
 
-EXECUTE='{"execute": {"proposal_id":2}}'
+EXECUTE='{"execute": {"proposal_id":1}}'
 EXECUTE='{"refund": {"proposal_id":1}}'
-EXECUTE='{"test": {"msg":{"msg_whitelist_app_id_vault_interest":{"app_mapping_id":3}}}}' 
-EXECUTE='{"test": {"msg":{"msg_whitelist_app_id_locker_rewards":{"app_mapping_id":3,"asset_id":[4]}}}}'
-EXECUTE='{"test": {"msg":{"msg_white_list_asset_locker":{"app_mapping_id":3,"asset_id":4}}}}'
+EXECUTE='{"vote": {"proposal_id":1,"vote":"no"}}'
+
+
+
+EXECUTE='{"test": {"msg":{"msg_whitelist_app_id_vault_interest":{"app_mapping_id":1}}}}' 
+EXECUTE='{"test": {"msg":{"msg_whitelist_app_id_locker_rewards":{"app_mapping_id":3,"asset_id":[3]}}}}'
+EXECUTE='{"test": {"msg":{"msg_white_list_asset_locker":{"app_mapping_id":1,"asset_id":1}}}}'
 EXECUTE='{"test": {"msg":{"msg_add_extended_pairs_vault":{"app_mapping_id":1,
                                                          "pair_id":1,
                                                          "liquidation_ratio":"1.4",
@@ -40,7 +47,7 @@ EXECUTE='{"test": {"msg":{"msg_add_extended_pairs_vault":{"app_mapping_id":1,
                                                         "liquidation_penalty":"0.12",
                                                         "draw_down_fee":"0.01",
                                                         "is_vault_active":true,
-                                                        "debt_cieling":10000000000,
+                                                        "debt_ceiling":10000000000,
                                                         "debt_floor":10000000,
                                                         "is_psm_pair":false,
                                                         "min_cr":"1.5",
@@ -57,22 +64,43 @@ EXECUTE='{"test": {"msg":{"msg_set_collector_lookup_table":{"app_mapping_id" :1,
                                                             "lot_size":2000,
                                                             "bid_factor":"0.01"}}}}'
 
+EXECUTE='{"test": {"msg":{"msg_update_lsr_in_collector_lookup_table":{"app_mapping_id":1,"asset_id":1 ,"lsr":"0.0123"}}}}'
 
+EXECUTE='{"test": {"msg":{"msg_update_lsr_in_pairs_vault":{"app_mapping_id" :1,
+                                                            "ext_pair_id" :1,
+                                                            "liquidation_ratio" :"2.111",
+                                                            "stability_fee" : "1.111",
+                                                            "closing_fee":"1.111",
+                                                            "liquidation_penalty":"0.11",
+                                                            "draw_down_fee":"0.11",
+                                                            "min_cr":"1.9",
+                                                            "debt_ceiling":1000000000,
+                                                            "debt_floor":10000000}}}}'
 
-comdex tx wasm execute comdex17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgs4jg6dx  "$EXECUTE" --from cooluser    --keyring-backend test  --chain-id test-1 --gas auto -y
+EXECUTE='{"test": {"msg":{"msg_set_auction_mapping_for_app":{"app_mapping_id" :1,
+                                                            "asset_id" :[1],
+                                                            "is_surplus_auction" :[true],
+                                                            "is_debt_auction":[true]
+                                                            }}}}'
+
+comdex tx wasm execute comdex14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9spunaxy  "$EXECUTE" --from cooluser    --keyring-backend test  --chain-id test-1 --gas auto -y
 
 
 //////// Query///////////////
 
 
 
-QUERY='{"test":{"query":{"remove_white_list_asset":{"app_mapping_id" :4,"asset_id":[5,6]}}}}'
-QUERY='{"test":{"query":{"whitelist_app_id_vault_interest":{"app_mapping_id" :4}}}}'
-QUERY='{"test":{"query":{"whitelist_app_id_locker_rewards":{"app_mapping_id" :4,"asset_id":[2]}}}}'
+
+
+QUERY='{"test":{"query":{"remove_white_list_asset":{"app_mapping_id" :2,"asset_id":[2]}}}}'
+QUERY='{"test":{"query":{"white_listed_asset_query":{"app_mapping_id" :2,"asset_id":2}}}}'
+
+QUERY='{"test":{"query":{"whitelist_app_id_vault_interest":{"app_mapping_id" :2}}}}'
+QUERY='{"test":{"query":{"whitelist_app_id_locker_rewards":{"app_mapping_id" :3,"asset_id":[3]}}}}'
 QUERY='{"test":{"query":{"collector_lookup_table_query":{"app_mapping_id" :3,
-                                                            "collector_asset_id" :1,
+                                                            "collector_asset_id" :3,
                                                             "secondary_asset_id" :2}}}}'
-QUERY='{"test":{"query":{"extended_pairs_vault_records_query":{"app_mapping_id":1,
+QUERY='{"test":{"query":{"extended_pairs_vault_records_query":{"app_mapping_id":4,
                                                          "pair_id":1,
                                                         "stability_fee":"0.01",
                                                         "closing_fee":"0.01",
@@ -81,15 +109,23 @@ QUERY='{"test":{"query":{"extended_pairs_vault_records_query":{"app_mapping_id":
                                                         "debt_floor":11110,
                                                         "pair_name":"Test"}}}}'
 
+QUERY='{"test":{"query":{"update_lsr_in_pairs_vault_query":{"app_mapping_id" :2,"ext_pair_id":2}}}}'
+
+QUERY='{"test":{"query":{"auction_mapping_for_app_query":{"app_mapping_id" :2,"asset_id":2}}}}'
+
+QUERY='{"test":{"query":{"update_lsr_in_collector_lookup_table_query":{"app_mapping_id" :3,"asset_id":3}}}}'
+
+
 
 QUERY='{"reverse_proposals":{}}'
 
-QUERY='{"list_votes":{"proposal_id":2}}'
+QUERY='{"list_votes":{"proposal_id":1}}'
 
-QUERY='{"threshold":{"proposal_id":2}}'
+QUERY='{"threshold":{"proposal_id":1}}'
 
-QUERY='{"proposal":{"proposal_id":3}}'
+QUERY='{"proposal":{"proposal_id":1}}'
 
+QUERY='{"list_app_proposal":{"proposal_id":3}}'
 
-comdex q wasm contract-state smart comdex17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgs4jg6dx  "$QUERY" --chain-id test-1    
+comdex q wasm contract-state smart comdex14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9spunaxy  "$QUERY" --chain-id test-1    
 

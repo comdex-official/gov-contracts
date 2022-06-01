@@ -1,0 +1,18 @@
+
+addr comdex1jvjqd6gsj46qcqa6yek75k34mrwgckhw7x4d5t
+
+
+add app_id
+
+comdex tx gov submit-proposal add-app-mapping Harbor hbr 100000000 900 --title addAsset --description addingAsset --from cooluser --deposit 10000000ucmdx --chain-id test-1 --keyring-backend test -y
+
+comdex tx gov vote 1  yes --from cooluser --chain-id test-1 --keyring-backend test -y 
+
+
+add assets:
+
+comdex tx gov submit-proposal add-assets composite ucmst  1000000  1  --title addAsset --description addingAsset --from cooluser --deposit 10000000ucmdx --chain-id test-1 --keyring-backend test -y
+
+add asset_mapping
+
+comdex tx gov submit-proposal add-asset-mapping 1 1  100000000000000  1 comdex1jvjqd6gsj46qcqa6yek75k34mrwgckhw7x4d5t --title addAsset --description addingAsset --from cooluser --deposit 10000000ucmdx --chain-id test-1 --keyring-backend test -y
