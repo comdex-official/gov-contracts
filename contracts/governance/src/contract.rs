@@ -18,8 +18,11 @@ use cw_utils::{Expiration, ThresholdResponse,Duration,Threshold};
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{next_id, Ballot, Config, Proposal, Votes, BALLOTS, CONFIG, PROPOSALS,PROPOSALSBYAPP};
-use crate::validation::{whitelistassetlocker,query_owner_token_at_height,query_app_exists,get_token_supply,query_get_asset_data,
-    whitelistassetlockerrewards,whitelistappidvaultinterest,validate_threshold,addextendedpairvault,collectorlookuptable};
+use crate::validation::{whitelistassetlockereligible,query_owner_token_at_height,query_app_exists,get_token_supply,query_get_asset_data,
+    whitelistassetlockerrewards,whitelistappidvaultinterest,validate_threshold,addextendedpairvault,collectorlookuptable,updatepairvaultstability
+,auctionmappingforapp,updatelockerlsr};
+
+
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:governance";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -167,7 +170,7 @@ pub fn execute_propose(
     for msg in msgs.clone()
     {
         match msg{
-            ComdexMessages::MsgWhiteListAssetLocker{app_mapping_id,asset_id}=>whitelistassetlocker(deps.as_ref(),app_mapping_id,asset_id,app_id)?,
+            ComdexMessages::MsgWhiteListAssetLocker{app_mapping_id,asset_id}=>whitelistassetlockereligible(deps.as_ref(),app_mapping_id,asset_id,app_id)?,
             ComdexMessages::MsgWhitelistAppIdLockerRewards{app_mapping_id,asset_id}=>whitelistassetlockerrewards(deps.as_ref(),app_mapping_id,asset_id,app_id)?,
             ComdexMessages::MsgWhitelistAppIdVaultInterest{app_mapping_id}=>whitelistappidvaultinterest(deps.as_ref(),app_mapping_id,app_id)?,
             ComdexMessages::MsgAddExtendedPairsVault{app_mapping_id,pair_id,liquidation_ratio:_,
@@ -189,6 +192,16 @@ pub fn execute_propose(
                 locker_saving_rate:_,
                 lot_size:_ ,
                 bid_factor:_} =>collectorlookuptable(deps.as_ref(),app_mapping_id,collector_asset_id,secondary_asset_id,app_id)?,
+
+            ComdexMessages::MsgUpdateLsrInPairsVault{app_mapping_id,ext_pair_id,liquidation_ratio:_,stability_fee:_,closing_fee:_,
+                liquidation_penalty:_,draw_down_fee:_,min_cr:_,debt_ceiling:_,debt_floor:_
+            }=>updatepairvaultstability(deps.as_ref(),app_mapping_id,ext_pair_id,app_id)?,
+
+
+            ComdexMessages::MsgSetAuctionMappingForApp{app_mapping_id,asset_id:_,is_surplus_auction:_,is_debt_auction:_} =>
+            auctionmappingforapp(deps.as_ref(),app_mapping_id,app_id)?,
+
+            ComdexMessages::MsgUpdateLsrInCollectorLookupTable{app_mapping_id,asset_id,lsr:_}=>updatelockerlsr(deps.as_ref(),app_mapping_id,asset_id,app_id)?
                 
 
         }

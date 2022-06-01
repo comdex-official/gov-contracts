@@ -23,7 +23,7 @@ comdex tx wasm instantiate 1  "$INIT" --from cooluser  --keyring-backend test --
 EXECUTE='{"propose":
             {"title":"new proposal",
              "description" :"test proposal",
-             "msgs" : [{"white_list_asset_locker":{"app_mapping_id":1,"asset_id":1}}],
+             "msgs" : [{"msg_white_list_asset_locker":{"app_mapping_id":1,"asset_id":1}}],
              "app_id" :1
             }}'
 

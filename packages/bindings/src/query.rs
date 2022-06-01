@@ -15,6 +15,9 @@ pub enum ComdexQuery {
     GetApp{app_mapping_id: u64},
 
     GetAssetData{asset_id:u64},
+
+    WhiteListedAssetQuery{app_mapping_id:u64 ,asset_id : u64 },
+
     
     WhitelistAppIdLockerRewards{app_mapping_id :u64, asset_id:Vec<u64>},
     
@@ -37,7 +40,18 @@ pub enum ComdexQuery {
         debt_ceiling:u64,
         debt_floor:u64,
         pair_name:String
-    }
+    },
+    
+
+    UpdateLsrInPairsVaultQuery{ 
+        app_mapping_id:u64,
+        ext_pair_id:u64
+    },
+
+
+    AuctionMappingForAppQuery{app_mapping_id:u64},
+
+    UpdateLsrInCollectorLookupTableQuery{app_mapping_id:u64,asset_id:u64}
 }
 
 impl CustomQuery for ComdexQuery {}

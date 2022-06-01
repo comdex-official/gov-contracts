@@ -34,12 +34,12 @@ pub enum ComdexMessages {
         lot_size :u64,
         bid_factor:Decimal,
     },
-    // MsgSetAuctionMappingForApp{
-    //     app_mapping_id : u64,
-    //     asset_id: Vec<u64>,
-    //     surplus_auction : Vec<bool>,
-    //     debt_auction : Vec<bool>,
-    // },
+    MsgSetAuctionMappingForApp{
+        app_mapping_id : u64,
+        asset_id: Vec<u64>,
+        is_surplus_auction : Vec<bool>,
+        is_debt_auction : Vec<bool>,
+    },
 
     MsgWhitelistAppIdVaultInterest{
         app_mapping_id:u64
@@ -48,6 +48,24 @@ pub enum ComdexMessages {
     {
         app_mapping_id:u64,
         asset_id:Vec<u64>
+    },
+    MsgUpdateLsrInPairsVault{
+        app_mapping_id:u64,
+        ext_pair_id:u64,
+        liquidation_ratio:Decimal,
+        stability_fee:Decimal,
+        closing_fee:Decimal,
+        liquidation_penalty:Decimal,
+        draw_down_fee:Decimal,
+        min_cr:Decimal,
+        debt_ceiling:u64,
+        debt_floor:u64
+    }
+    ,
+    MsgUpdateLsrInCollectorLookupTable{
+        app_mapping_id:u64,
+        asset_id:u64,
+        lsr:Decimal
     }
 }
 
