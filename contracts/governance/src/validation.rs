@@ -30,7 +30,7 @@ pub fn whitelistassetlocker(deps:Deps<ComdexQuery>,app_mapping_id:u64,asset_id:u
     {
         return Err(ContractError::DifferentAppID {})
     }
-    let query= ComdexQuery::WhitelistAppIdLockerRewards{app_id :app_mapping_id, asset_id:vec![asset_id]};
+    let query= ComdexQuery::WhitelistAppIdLockerRewards{app_mapping_id :app_mapping_id, asset_id:vec![asset_id]};
     let query_result= deps
     .querier
     .query::<MessageValidateResponse>(&QueryRequest::Custom(query))?;
@@ -46,6 +46,62 @@ pub fn whitelistassetlocker(deps:Deps<ComdexQuery>,app_mapping_id:u64,asset_id:u
     
 }
 
+pub fn collectorlookuptable(deps:Deps<ComdexQuery>,app_mapping_id:u64,
+    collector_asset_id:u64,
+    secondary_asset_id:u64,
+    app_id:u64)
+-> Result< (), ContractError>
+{
+    if app_mapping_id!=app_id
+    {
+        return Err(ContractError::DifferentAppID {})
+    }
+    let query= ComdexQuery::CollectorLookupTableQuery{app_mapping_id :app_mapping_id, collector_asset_id:collector_asset_id,secondary_asset_id:secondary_asset_id};
+    let query_result= deps
+    .querier
+    .query::<MessageValidateResponse>(&QueryRequest::Custom(query))?;
+
+    if query_result.found{
+        Ok(())
+
+    }
+    else {
+        let err=query_result.err;
+        return Err(ContractError::ProposalError {err})
+    }
+    
+}
+
+pub fn addextendedpairvault(deps:Deps<ComdexQuery>,app_mapping_id :u64,
+    pair_id:u64,
+    stability_fee:Decimal,
+    closing_fee:Decimal,
+    draw_down_fee:Decimal,
+    debt_ceiling:u64,
+    debt_floor:u64,
+    pair_name:String,app_id:u64)
+-> Result< (), ContractError>
+{
+    if app_mapping_id!=app_id
+    {
+        return Err(ContractError::DifferentAppID {})
+    }
+    let query= ComdexQuery::ExtendedPairsVaultRecordsQuery{app_mapping_id :app_mapping_id, pair_id:pair_id,stability_fee:stability_fee,
+    closing_fee:closing_fee,draw_down_fee:draw_down_fee,debt_ceiling:debt_ceiling,debt_floor:debt_floor,pair_name};
+    let query_result= deps
+    .querier
+    .query::<MessageValidateResponse>(&QueryRequest::Custom(query))?;
+
+    if query_result.found{
+        Ok(())
+    }
+    else {
+        let err=query_result.err;
+        return Err(ContractError::ProposalError {err})
+    }
+    
+}
+
 pub fn whitelistassetlockerrewards(deps:Deps<ComdexQuery>,app_mapping_id:u64,asset_id:Vec<u64>,app_id:u64)
 -> Result< (), ContractError>
 {
@@ -53,7 +109,7 @@ pub fn whitelistassetlockerrewards(deps:Deps<ComdexQuery>,app_mapping_id:u64,ass
     {
         return Err(ContractError::DifferentAppID {})
     }
-    let query= ComdexQuery::WhitelistAppIdLockerRewards{app_id :app_mapping_id, asset_id:asset_id};
+    let query= ComdexQuery::WhitelistAppIdLockerRewards{app_mapping_id :app_mapping_id, asset_id:asset_id};
     let query_result= deps
     .querier
     .query::<MessageValidateResponse>(&QueryRequest::Custom(query))?;
@@ -75,7 +131,7 @@ pub fn whitelistappidvaultinterest(deps:Deps<ComdexQuery>,app_mapping_id:u64,app
     {
         return Err(ContractError::DifferentAppID {})
     }
-    let query= ComdexQuery::WhitelistAppIdVaultInterest{app_id :app_mapping_id};
+    let query= ComdexQuery::WhitelistAppIdVaultInterest{app_mapping_id :app_mapping_id};
     let query_result= deps
     .querier
     .query::<MessageValidateResponse>(&QueryRequest::Custom(query))?;
@@ -130,7 +186,7 @@ pub fn get_token_supply(deps: Deps<ComdexQuery>,app_id:u64,asset_id:u64) -> StdR
     let total_token_supply=deps
     .querier
     .query::<TotalSupplyResponse>(&QueryRequest::Custom(
-        ComdexQuery::TotalSupply {app_id:app_id,asset_id: asset_id}
+        ComdexQuery::TotalSupply {app_mapping_id:app_id,asset_id: asset_id}
     ))?;
     
     Ok(total_token_supply.current_supply)

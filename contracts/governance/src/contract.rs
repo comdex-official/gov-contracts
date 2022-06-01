@@ -19,7 +19,7 @@ use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{next_id, Ballot, Config, Proposal, Votes, BALLOTS, CONFIG, PROPOSALS,PROPOSALSBYAPP};
 use crate::validation::{whitelistassetlocker,query_owner_token_at_height,query_app_exists,get_token_supply,query_get_asset_data,
-    whitelistassetlockerrewards,whitelistappidvaultinterest,validate_threshold};
+    whitelistassetlockerrewards,whitelistappidvaultinterest,validate_threshold,addextendedpairvault,collectorlookuptable};
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:governance";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -32,8 +32,8 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     match msg.threshold {
-        Threshold::AbsoluteCount{weight}=> return Err(ContractError::AbsoluteCountNotAccepted {}),
-        Threshold::AbsolutePercentage{percentage}=> return Err(ContractError::AbsolutePercentageNotAccepted {}),
+        Threshold::AbsoluteCount{weight:_}=> return Err(ContractError::AbsoluteCountNotAccepted {}),
+        Threshold::AbsolutePercentage{percentage:_}=> return Err(ContractError::AbsolutePercentageNotAccepted {}),
         Threshold::ThresholdQuorum{threshold,quorum}=>validate_threshold(&threshold,&quorum)?
 
     }
@@ -41,7 +41,6 @@ pub fn instantiate(
     let cfg = Config {
         threshold: msg.threshold,
         target:msg.target,
-    
     };
     CONFIG.save(deps.storage, &cfg)?;
     Ok(Response::default())
@@ -171,6 +170,27 @@ pub fn execute_propose(
             ComdexMessages::MsgWhiteListAssetLocker{app_mapping_id,asset_id}=>whitelistassetlocker(deps.as_ref(),app_mapping_id,asset_id,app_id)?,
             ComdexMessages::MsgWhitelistAppIdLockerRewards{app_mapping_id,asset_id}=>whitelistassetlockerrewards(deps.as_ref(),app_mapping_id,asset_id,app_id)?,
             ComdexMessages::MsgWhitelistAppIdVaultInterest{app_mapping_id}=>whitelistappidvaultinterest(deps.as_ref(),app_mapping_id,app_id)?,
+            ComdexMessages::MsgAddExtendedPairsVault{app_mapping_id,pair_id,liquidation_ratio:_,
+            stability_fee,closing_fee,liquidation_penalty:_,draw_down_fee,
+            is_vault_active:_,debt_ceiling,debt_floor,is_psm_pair:_,
+            min_cr:_,pair_name,asset_out_oracle_price:_,assset_out_price:_}=>addextendedpairvault(deps.as_ref(),app_mapping_id,
+            pair_id,
+            stability_fee,
+            closing_fee,
+            draw_down_fee,
+            debt_ceiling,
+            debt_floor,
+            pair_name,app_id)?,
+            ComdexMessages::MsgSetCollectorLookupTable{app_mapping_id ,
+                collector_asset_id ,
+                secondary_asset_id ,
+                surplus_threshold:_ ,
+                debt_threshold:_,
+                locker_saving_rate:_,
+                lot_size:_ ,
+                bid_factor:_} =>collectorlookuptable(deps.as_ref(),app_mapping_id,collector_asset_id,secondary_asset_id,app_id)?,
+                
+
         }
     }
     // create a proposal
