@@ -1,5 +1,30 @@
 use crate::error::ContractError;
 use cosmwasm_std::Coin;
+use cw3::{
+    ProposalListResponse, ProposalResponse, Status, Vote, VoteInfo, VoteListResponse, VoteResponse,
+    };
+pub fn assert_sent_sufficient_coin_deposit(
+    sent: &[Coin],
+    required: Option<Coin>,
+) -> Result<Status, ContractError> {
+    if let Some(required_coin) = required {
+        let required_amount = required_coin.amount.u128();
+        if required_amount > 0 {
+            let sent_sufficient_funds = sent.iter().any(|coin| {
+                // check if a given sent coin matches denom
+                // and has sufficient amount
+                coin.denom == required_coin.denom && coin.amount.u128() >= required_amount
+            });
+
+            if sent_sufficient_funds {
+                return Ok(Status::Open);
+            } else {
+                return Ok(Status::Pending);
+            }
+        }
+    }
+    Ok(Status::Open)
+}
 
 pub fn assert_sent_sufficient_coin(
     sent: &[Coin],
@@ -23,6 +48,7 @@ pub fn assert_sent_sufficient_coin(
     }
     Ok(())
 }
+
 
 #[cfg(test)]
 mod test {

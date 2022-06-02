@@ -22,6 +22,7 @@ pub fn validate_threshold(threshold:&Decimal,quorum:&Decimal)
     
 }
 
+/// validate checks to update vault stability fee
 pub fn updatepairvaultstability(deps:Deps<ComdexQuery>,app_mapping_id:u64,ext_pair_id:u64,app_id:u64)
 -> Result< (), ContractError>
 {
@@ -45,6 +46,7 @@ pub fn updatepairvaultstability(deps:Deps<ComdexQuery>,app_mapping_id:u64,ext_pa
     
 }
 
+/// validate checks to update locker saving rate
 pub fn updatelockerlsr(deps:Deps<ComdexQuery>,app_mapping_id:u64,asset_id:u64,app_id:u64)
 -> Result< (), ContractError>
 {
@@ -68,7 +70,7 @@ pub fn updatelockerlsr(deps:Deps<ComdexQuery>,app_mapping_id:u64,asset_id:u64,ap
     
 }
 
-//check if whitelist asset locker proposal pass the eligibility
+//check asset is available for rewards in locker
 pub fn whitelistassetlockerrewards(deps:Deps<ComdexQuery>,app_mapping_id:u64,asset_id:Vec<u64>,app_id:u64)
 -> Result< (), ContractError>
 {
@@ -92,7 +94,7 @@ pub fn whitelistassetlockerrewards(deps:Deps<ComdexQuery>,app_mapping_id:u64,ass
     
 }
 
-
+/// check if asset and be whitelisted in locker
 pub fn whitelistassetlockereligible(deps:Deps<ComdexQuery>,app_mapping_id:u64,asset_id:u64,app_id:u64)
 -> Result< (), ContractError>
 {
@@ -116,6 +118,7 @@ pub fn whitelistassetlockereligible(deps:Deps<ComdexQuery>,app_mapping_id:u64,as
     
 }
 
+/// check if mapping is there in collector lookup for thr app and asset
 pub fn collectorlookuptable(deps:Deps<ComdexQuery>,app_mapping_id:u64,
     collector_asset_id:u64,
     secondary_asset_id:u64,
@@ -141,6 +144,8 @@ pub fn collectorlookuptable(deps:Deps<ComdexQuery>,app_mapping_id:u64,
     }
     
 }
+
+//// check mapping for auction for an app
 pub fn auctionmappingforapp(deps:Deps<ComdexQuery>,app_mapping_id:u64,
     app_id:u64)
 -> Result< (), ContractError>
@@ -164,7 +169,7 @@ pub fn auctionmappingforapp(deps:Deps<ComdexQuery>,app_mapping_id:u64,
     }
     
 }
-
+//// eligibility checks to add and extended pair  vaults
 pub fn addextendedpairvault(deps:Deps<ComdexQuery>,app_mapping_id :u64,
     pair_id:u64,
     stability_fee:Decimal,
@@ -196,7 +201,7 @@ pub fn addextendedpairvault(deps:Deps<ComdexQuery>,app_mapping_id :u64,
 }
 
 
-
+/// checks for activating vault interest for an app
 pub fn whitelistappidvaultinterest(deps:Deps<ComdexQuery>,app_mapping_id:u64,app_id:u64)
 -> Result< (), ContractError>
 {
@@ -222,7 +227,7 @@ pub fn whitelistappidvaultinterest(deps:Deps<ComdexQuery>,app_mapping_id:u64,app
 
 
 
-
+/// query token balance of a user for a denom at a specific height
 pub fn query_owner_token_at_height(deps: Deps<ComdexQuery>,address:String,denom:String,height:String,target:String) -> StdResult<Coin> {
     let voting_power=deps
     .querier
@@ -233,6 +238,7 @@ pub fn query_owner_token_at_height(deps: Deps<ComdexQuery>,address:String,denom:
     Ok(voting_power)
 }
 
+//// check get app date 
 pub fn query_app_exists(deps: Deps<ComdexQuery>,app_mapping_id_1:u64) -> StdResult<GetAppResponse> {
     let app_info=deps
     .querier
@@ -243,6 +249,7 @@ pub fn query_app_exists(deps: Deps<ComdexQuery>,app_mapping_id_1:u64) -> StdResu
     Ok(app_info)
 }
 
+/// get asset data for an asset_id
 pub fn query_get_asset_data(deps: Deps<ComdexQuery>,asset_id:u64) -> StdResult<String> {
     let asset_denom=deps
     .querier
@@ -254,7 +261,7 @@ pub fn query_get_asset_data(deps: Deps<ComdexQuery>,asset_id:u64) -> StdResult<S
 }
 
 
-
+/// get token_supply of an asset at current height
 pub fn get_token_supply(deps: Deps<ComdexQuery>,app_id:u64,asset_id:u64) -> StdResult<u64> {
     let total_token_supply=deps
     .querier

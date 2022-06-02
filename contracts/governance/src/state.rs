@@ -19,6 +19,7 @@ pub struct Config {
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+
 pub struct Proposal {
     pub title: String,
     pub description: String,
@@ -35,7 +36,10 @@ pub struct Proposal {
     pub deposit :Vec<Coin>,
     pub proposer : String,
     pub token_denom :String,
-    pub deposit_refunded: bool
+    pub deposit_refunded: bool,
+    pub min_deposit:u64,
+    pub deposit_denom:String,
+    pub current_deposit:u128
 }
 
 impl Proposal {
@@ -180,6 +184,15 @@ pub struct Ballot {
     pub vote: Vote,
 }
 
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct VoteWeight {
+    pub yes: u128,
+    pub no: u128,
+    pub abstain: u128,
+    pub veto: u128,
+
+}
+
 // unique items
 pub const CONFIG: Item<Config> = Item::new("config");
 pub const PROPOSAL_COUNT: Item<u64> = Item::new("proposal_count");
@@ -188,6 +201,8 @@ pub const PROPOSAL_COUNT: Item<u64> = Item::new("proposal_count");
 pub const BALLOTS: Map<(u64, &Addr), Ballot> = Map::new("votes");
 pub const PROPOSALSBYAPP: Map<u64, Vec<u64>> = Map::new("ProposalsByApp");
 pub const PROPOSALS: Map<u64, Proposal> = Map::new("proposals");
+pub const VOTERDEPOSIT: Map<(u64, &Addr), Vec<Coin>> = Map::new("voter deposit");
+pub const PROPOSALVOTE: Map<u64,VoteWeight> = Map::new("vote weight");
 
 
 pub fn next_id(store: &mut dyn Storage) -> StdResult<u64> {

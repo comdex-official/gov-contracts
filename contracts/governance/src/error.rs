@@ -27,11 +27,20 @@ pub enum ContractError {
     #[error("More than 1 messages provided")]
     ExtraMessages {},
 
+    #[error("Deposit refund already completed for the proposal")]
+    RefundedAlready {},
+
     #[error("No Messages provided")]
     NoMessage {},
 
     #[error("Wrong Deposit Provided")]
-    IncorrectDeposi {},
+    IncorrectDeposit {},
+
+    #[error("No refund for failed proposal")]
+    NonPassedProposalRefund {},
+
+    #[error("No deposit record found for proposal")]
+    NoDeposit{},
 
     #[error("Insufficient funds sent")]
     InsufficientFundsSend {},

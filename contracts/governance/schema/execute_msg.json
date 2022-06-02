@@ -192,10 +192,10 @@
       }
     },
     "ComdexMessages": {
-      "description": "A number of Custom messages that can call into the Osmosis bindings",
+      "description": "A number of Custom messages that can call into the Comdex bindings",
       "oneOf": [
         {
-          "description": "Creates a denomination consisting of prefix + contract address + sub-denom. I.e. \"factory/<bech32 address>/<sub-denom>\". Sub_denoms (nonces in Osmosis) are validated as part of the full denomination. Can be up to 128 - prefix length (currently 7) - bech32 address length (4 (osmo) + 39) - number of separators (2) = 76 \"alphanumeric\" (https://github.com/cosmos/cosmos-sdk/blob/2646b474c7beb0c93d4fafd395ef345f41afc251/types/coin.go#L677) characters long. Empty sub-denoms are valid. The token will then be prefix + contract address, i.e. \"factory/<bech32 address>/\"",
+          "description": "Creates a denomination consisting of prefix + contract address + sub-denom. I.e. \"factory/<bech32 address>/<sub-denom>\". Sub_denoms (nonces in Comdex) are validated as part of the full denomination. Can be up to 128 - prefix length (currently 7) - bech32 address length (4 (osmo) + 39) - number of separators (2) = 76 \"alphanumeric\" (https://github.com/cosmos/cosmos-sdk/blob/2646b474c7beb0c93d4fafd395ef345f41afc251/types/coin.go#L677) characters long. Empty sub-denoms are valid. The token will then be prefix + contract address, i.e. \"factory/<bech32 address>/\"",
           "type": "object",
           "required": [
             "white_list_asset_locker"

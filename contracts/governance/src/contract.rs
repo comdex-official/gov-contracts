@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::cmp::Ordering;
 
 #[cfg(not(feature = "library"))]
@@ -6,7 +7,7 @@ use cosmwasm_std::{
     to_binary, Binary, BlockInfo, Deps, DepsMut, Env, MessageInfo, Order,
     Response, StdResult,BankMsg,Coin,QueryRequest, Uint128,
 };
-use crate::coin_helpers::assert_sent_sufficient_coin;
+use crate::coin_helpers::{assert_sent_sufficient_coin, assert_sent_sufficient_coin_deposit};
 use comdex_bindings::ComdexMessages;
 use comdex_bindings::{ComdexQuery,MessageValidateResponse};
 use cw2::set_contract_version;
@@ -16,8 +17,8 @@ use cw3::{
 use cw_storage_plus::Bound;
 use cw_utils::{Expiration, ThresholdResponse,Duration,Threshold};
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{next_id, Ballot, Config, Proposal, Votes, BALLOTS, CONFIG, PROPOSALS,PROPOSALSBYAPP};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg,ProposalResponseTotal};
+use crate::state::{next_id, Ballot, Config, Proposal, Votes,VoteWeight, BALLOTS, CONFIG, PROPOSALS,PROPOSALSBYAPP,VOTERDEPOSIT,PROPOSALVOTE};
 use crate::validation::{whitelistassetlockereligible,query_owner_token_at_height,query_app_exists,get_token_supply,query_get_asset_data,
     whitelistassetlockerrewards,whitelistappidvaultinterest,validate_threshold,addextendedpairvault,collectorlookuptable,updatepairvaultstability
 ,auctionmappingforapp,updatelockerlsr};
@@ -69,6 +70,7 @@ pub fn execute(
         ExecuteMsg::Execute { proposal_id } => execute_execute(deps, env, info, proposal_id),
         ExecuteMsg::Refund { proposal_id } => execute_refund(deps, env, info, proposal_id),
         ExecuteMsg::Test { msg } => execute_execute1(deps, env, info, msg),
+        ExecuteMsg::Deposit { proposal_id} => execute_deposit(deps, env, info, proposal_id),
 
     }
 }
@@ -80,9 +82,6 @@ pub fn execute_execute1(
     msg:ComdexMessages
 ) -> Result<Response<ComdexMessages>, ContractError> {
     // anyone can trigger this if the vote passed
-
-    
-
     // dispatch all proposed messages
     Ok(Response::new()
         .add_message(msg)
@@ -117,6 +116,7 @@ pub fn execute_propose(
     
     //Get App Data for app_id 
     let app_response=query_app_exists(deps.as_ref(),  app_id)?;
+    //if app response exists gov data
     let voting_time=app_response.gov_time_in_seconds;
     let min_gov_deposit=app_response.min_gov_deposit;
     let max_voting_period =Duration::Time(voting_time);
@@ -138,7 +138,9 @@ pub fn execute_propose(
     let min_deposit=Coin{amount:Uint128::from(min_gov_deposit), denom:gov_token_denom.clone()};
     let cfg = CONFIG.load(deps.storage)?;
     let height=env.block.height-1;
+
     //Calculate Proposer voting Power
+
     let voting_power=query_owner_token_at_height(deps.as_ref(),info.sender.to_string(),gov_token_denom.to_string(),height.to_string(),cfg.target)?;
 
     // max expires also used as default
@@ -153,10 +155,8 @@ pub fn execute_propose(
 
     //Check if deposited is more than Min-Deposit
 
-    assert_sent_sufficient_coin(&info.funds,  Some(min_deposit))?;
 
     //Check if no other deposit provided other than gov token deposit
-
     let funds_len=info.funds.len();
     
     if funds_len>1{
@@ -164,10 +164,13 @@ pub fn execute_propose(
     }
     //check if gov denom exists in user deposit
 
+    let mut current_deposit:u128=0;
     let mut is_correct_denom=false;
     for user_deposit in &info.funds{
         if user_deposit.denom.eq(&gov_token_denom){
             is_correct_denom=true;
+            current_deposit=user_deposit.amount.u128();
+
         }
     }
 
@@ -203,24 +206,25 @@ pub fn execute_propose(
                                                         surplus_threshold:_ ,
                                                         debt_threshold:_,
                                                         locker_saving_rate:_,
-                                                        lot_size:_ ,bid_factor:_} =>collectorlookuptable(deps.as_ref(),app_mapping_id,collector_asset_id,secondary_asset_id,app_id)?,
+                                                        lot_size:_ ,
+                                                        bid_factor:_} =>collectorlookuptable(deps.as_ref(),app_mapping_id,collector_asset_id,secondary_asset_id,app_id)?,
 
-             ComdexMessages::MsgUpdateLsrInPairsVault{app_mapping_id,
-                                                      ext_pair_id,
-                                                      liquidation_ratio:_,
-                                                      stability_fee:_,
-                                                      closing_fee:_,
-                                                      liquidation_penalty:_,
-                                                      draw_down_fee:_,
-                                                      min_cr:_,
-                                                      debt_ceiling:_,
-                                                      debt_floor:_}=>updatepairvaultstability(deps.as_ref(),app_mapping_id,ext_pair_id,app_id)?,
+            ComdexMessages::MsgUpdateLsrInPairsVault{app_mapping_id,
+                                                     ext_pair_id,
+                                                     liquidation_ratio:_,
+                                                     stability_fee:_,
+                                                     closing_fee:_,
+                                                     liquidation_penalty:_,
+                                                     draw_down_fee:_,
+                                                     min_cr:_,
+                                                     debt_ceiling:_,
+                                                     debt_floor:_}=>updatepairvaultstability(deps.as_ref(),app_mapping_id,ext_pair_id,app_id)?,
 
 
             ComdexMessages::MsgSetAuctionMappingForApp{app_mapping_id,
-                                                    asset_id:_,
-                                                    is_surplus_auction:_,
-                                                    is_debt_auction:_} =>auctionmappingforapp(deps.as_ref(),app_mapping_id,app_id)?,
+                                                       asset_id:_,
+                                                       is_surplus_auction:_,
+                                                       is_debt_auction:_} =>auctionmappingforapp(deps.as_ref(),app_mapping_id,app_id)?,
 
             ComdexMessages::MsgUpdateLsrInCollectorLookupTable{app_mapping_id,asset_id,lsr:_}=>updatelockerlsr(deps.as_ref(),app_mapping_id,asset_id,app_id)?
                 
@@ -228,6 +232,8 @@ pub fn execute_propose(
         }
     }
 
+
+    let deposit_status=assert_sent_sufficient_coin_deposit(&info.funds,  Some(min_deposit))?;
     // create a proposal
     let mut prop = Proposal {
         title,
@@ -235,36 +241,50 @@ pub fn execute_propose(
         start_height: env.block.height,
         expires,
         msgs,
-        status: Status::Open,
-        votes: Votes::yes(voting_power.amount.u128()) ,
+        status: deposit_status,
+        votes: Votes::yes(voting_power.amount.u128()),
         threshold: cfg.threshold,
         total_weight: Uint128::from(total_weight).u128(),
-        deposit:info.funds,
+        deposit:info.funds.clone(),
         proposer :info.sender.to_string(),
-        token_denom : gov_token_denom,
-        deposit_refunded:false
+        token_denom : gov_token_denom.clone(),
+        deposit_refunded:false,
+        min_deposit:min_gov_deposit,
+        deposit_denom:gov_token_denom,
+        current_deposit:current_deposit,
 
     };
-
     
-
     
+    let  vote_weight=VoteWeight{
+        yes:voting_power.amount.u128(),
+        no:0,
+        abstain:0,
+        veto:0
+    };
+    
+   
     prop.update_status(&env.block);
     
     //get latest proposal id counter
     let id = next_id(deps.storage)?;
     PROPOSALS.save(deps.storage, id, &prop)?;
+    PROPOSALVOTE.save(deps.storage, id, &vote_weight)?;
 
     // add the first yes vote from voter
     let ballot = Ballot {
         weight: voting_power.amount.u128(),
         vote: Vote::Yes,
     };
+    
     BALLOTS.save(deps.storage, (id, &info.sender), &ballot)?;
+    VOTERDEPOSIT.save(deps.storage, (id, &info.sender), &info.funds)?;
+
     let  propbyapp = match PROPOSALSBYAPP.may_load(deps.storage, app_id)?
     {Some(data)=>Some(data),
         None=>Some(vec![])};
 
+    
     let mut app_proposals=propbyapp.unwrap();
     app_proposals.push(id);
     PROPOSALSBYAPP.save(deps.storage, app_id, &app_proposals)?;
@@ -285,6 +305,9 @@ pub fn execute_vote(
 
     // ensure proposal exists and can be voted on
     let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
+    let mut vote_weight = PROPOSALVOTE.load(deps.storage, proposal_id)?;
+    
+
     if prop.status != Status::Open {
         return Err(ContractError::NotOpen {});
     }
@@ -300,6 +323,7 @@ pub fn execute_vote(
     //Get Voter power at proposal height 
     let voting_power=query_owner_token_at_height(deps.as_ref(),info.sender.to_string(),token_denom.to_string(),proposal_height.to_string(),cfg.target)?;
 
+    
     // cast vote if no vote previously cast
     BALLOTS.update(deps.storage, (proposal_id, &info.sender), |bal| match bal {
         Some(_) => Err(ContractError::AlreadyVoted {}),
@@ -309,11 +333,19 @@ pub fn execute_vote(
         }),
     })?;
 
+    match vote{
+        Vote::Yes => {vote_weight.yes=vote_weight.yes+voting_power.amount.u128();},
+        Vote::No => {vote_weight.no=vote_weight.no+voting_power.amount.u128();},
+        Vote::Abstain => {vote_weight.abstain=vote_weight.abstain+voting_power.amount.u128();},
+        Vote::Veto => {vote_weight.veto=vote_weight.veto+voting_power.amount.u128();},
+    }
+    
+
     // update vote tally
     prop.votes.add_vote(vote, voting_power.amount.u128());
     prop.update_status(&env.block);
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
-
+    PROPOSALVOTE.save(deps.storage, proposal_id, &vote_weight)?;
     Ok(Response::new()
         .add_attribute("action", "vote")
         .add_attribute("sender", info.sender)
@@ -353,7 +385,87 @@ pub fn execute_execute(
         .add_attribute("sender", info.sender)
         .add_attribute("proposal_id", proposal_id.to_string()))
 }
+pub fn execute_deposit(
+    deps: DepsMut<ComdexQuery>,
+    env: Env,
+    info: MessageInfo,
+    proposal_id: u64,
+) -> Result<Response<ComdexMessages>, ContractError> {
 
+
+    let mut  prop = PROPOSALS.load(deps.storage, proposal_id)?;
+    if ![ Status::Pending,Status::Open]
+        .iter()
+        .any(|x| *x != prop.status)
+    {
+        return Err(ContractError::WrongRefundStatus {});
+    }
+    let mut deposit_info = match VOTERDEPOSIT.may_load(deps.storage, (proposal_id, &info.sender))?
+    {
+        Some(record) => record,
+        None => vec![]
+    };
+
+    let mut deposit_amount:u128=0;
+    if deposit_info!=vec![]{
+    for mut d in deposit_info.clone(){
+        for  k in info.funds.clone(){
+            if k.denom==d.denom{
+                d.amount=d.amount+k.amount;
+                deposit_amount=d.amount.u128();
+            }
+        }
+    }
+    }
+    else 
+    {   let mut is_correct_fund=false;
+        for deposit_iter in info.funds.clone()
+        {
+            if prop.deposit_denom==deposit_iter.denom
+            {
+                deposit_amount=deposit_amount+deposit_iter.amount.u128();
+                is_correct_fund=true;
+
+            }
+        }
+        if is_correct_fund{
+            deposit_info=info.funds;
+        }
+        else {
+            return Err(ContractError::WrongRefundStatus {})
+        }
+    }
+
+    prop.current_deposit=prop.current_deposit+deposit_amount;
+
+    if Uint128::from(prop.current_deposit)>Uint128::from(prop.min_deposit)
+    {
+        prop.status=Status::Open
+    }
+
+
+    VOTERDEPOSIT.save(deps.storage, (proposal_id, &info.sender), &deposit_info)?;
+    PROPOSALS.save(deps.storage, proposal_id, &prop)?;
+
+    if [Status::Pending]
+        .iter()
+        .any(|x| *x != prop.status)
+    {
+        return Err(ContractError::WrongRefundStatus {});
+    }
+
+    
+    
+
+    prop.deposit_refunded=true;
+    PROPOSALS.save(deps.storage, proposal_id, &prop)?;
+    
+    Ok(Response::new()
+        
+        .add_attribute("action", "refund")
+        .add_attribute("sender", info.sender)
+        .add_attribute("proposal_id", proposal_id.to_string()))
+}
 pub fn execute_refund(
     deps: DepsMut<ComdexQuery>,
     env: Env,
@@ -361,33 +473,39 @@ pub fn execute_refund(
     proposal_id: u64,
 ) -> Result<Response<ComdexMessages>, ContractError> {
 
-    let mut  prop = PROPOSALS.load(deps.storage, proposal_id)?;
-    if ![Status::Executed, Status::Rejected, Status::Passed]
+    let   prop = PROPOSALS.load(deps.storage, proposal_id)?;
+    if ![ Status::Passed,Status::Executed]
         .iter()
         .any(|x| *x != prop.status)
     {
-        return Err(ContractError::WrongRefundStatus {});
+        return Err(ContractError::NonPassedProposalRefund {});
     }
+    
     if !prop.expires.is_expired(&env.block) {
         return Err(ContractError::NotExpired {});
-    }
-    if info.sender!=prop.proposer{
-        return Err(ContractError::Unauthorized {});
+    
     }
 
-    if prop.deposit_refunded{
-        return Err(ContractError::NotExpired {})
+    let deposit_info = match VOTERDEPOSIT.may_load(deps.storage, (proposal_id, &info.sender))?
+    {
+        Some(record) => record,
+        None => vec![]
+    };
+
+    if deposit_info==vec![]
+    {
+        return Err(ContractError::NoDeposit {});
     }
 
+  
+    VOTERDEPOSIT.remove(deps.storage, (proposal_id, &info.sender));
 
-    prop.deposit_refunded=true;
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
     
-
     Ok(Response::new()
         .add_message(BankMsg::Send {
-            to_address: prop.proposer.clone().into(),
-            amount:prop.deposit
+            to_address: info.sender.to_string(),
+            amount:deposit_info
         })
         .add_attribute("action", "refund")
         .add_attribute("sender", info.sender)
@@ -401,7 +519,7 @@ pub fn query(deps: Deps<ComdexQuery>, env: Env, msg: QueryMsg) -> StdResult<Bina
         QueryMsg::Test {query} => to_binary(&get_test(deps,query)?),
 
         QueryMsg::Threshold {proposal_id} => to_binary(&query_threshold(deps,proposal_id)?),
-        QueryMsg::Proposal { proposal_id } => to_binary(&query_proposal(deps, env, proposal_id)?),
+        QueryMsg::Proposal { proposal_id } => to_binary(&query_proposal_detailed(deps, env, proposal_id)?),
         QueryMsg::Vote { proposal_id, voter } => to_binary(&query_vote(deps, proposal_id, voter)?),
         QueryMsg::ListProposals { start_after, limit } => {
             to_binary(&list_proposals(deps, env, start_after, limit)?)
@@ -416,6 +534,8 @@ pub fn query(deps: Deps<ComdexQuery>, env: Env, msg: QueryMsg) -> StdResult<Bina
             limit,
         } => to_binary(&list_votes(deps, proposal_id, start_after, limit)?),
         QueryMsg::ListAppProposal { app_id } => to_binary(&get_proposals_by_app(deps, app_id)?),
+        QueryMsg::ProposalWeight { proposal_id } => to_binary(&query_proposal_weight(deps, env,proposal_id)?),
+
         
     }
 }
@@ -436,7 +556,25 @@ fn query_threshold(deps: Deps<ComdexQuery>,proposal_id:u64) -> StdResult<Thresho
     Ok(cfg.threshold.to_response(prop.total_weight))
 }
 
-
+fn query_proposal_detailed(deps: Deps<ComdexQuery>, env: Env, id: u64) -> StdResult<ProposalResponseTotal> {
+    let prop = PROPOSALS.load(deps.storage, id)?;
+    let status = prop.current_status(&env.block);
+    Ok(ProposalResponseTotal {
+        id,
+        title: prop.title,
+        description: prop.description,
+        msgs: prop.msgs,
+        status,
+        expires: prop.expires,
+        votes:prop.votes,
+        start_height:prop.start_height,
+        threshold:prop.threshold,
+        proposer:prop.proposer,
+        token_denom:prop.token_denom,
+        total_weight:prop.total_weight,
+        deposit:prop.deposit
+    })
+}
 fn query_proposal(deps: Deps<ComdexQuery>, env: Env, id: u64) -> StdResult<ProposalResponse> {
     let prop = PROPOSALS.load(deps.storage, id)?;
     let status = prop.current_status(&env.block);
@@ -452,6 +590,10 @@ fn query_proposal(deps: Deps<ComdexQuery>, env: Env, id: u64) -> StdResult<Propo
     })
 }
 
+fn query_proposal_weight(deps: Deps<ComdexQuery>, _env: Env, proposal_id:  u64) -> StdResult<VoteWeight> {
+    let prop = PROPOSALVOTE.load(deps.storage, proposal_id)?;
+    Ok(prop)
+}
 // settings for pagination
 const MAX_LIMIT: u32 = 300;
 const DEFAULT_LIMIT: u32 = 10;
@@ -470,7 +612,7 @@ fn list_proposals(
         .map(|p| map_proposal(&env.block, p))
         .collect::<StdResult<_>>()?;
 
-    Ok(ProposalListResponse { proposals })
+    Ok(ProposalListResponse{ proposals })
 }
 
 fn get_proposals_by_app(deps: Deps<ComdexQuery>,app_id : u64) -> StdResult<Vec<u64>> {
@@ -537,6 +679,7 @@ fn list_votes(
     limit: Option<u32>,
 ) -> StdResult<VoteListResponse> {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+
     let start = start_after.map(|s| Bound::ExclusiveRaw(s.into()));
 
     let votes = BALLOTS
@@ -555,6 +698,4 @@ fn list_votes(
 
     Ok(VoteListResponse { votes })
 }
-
-
 
