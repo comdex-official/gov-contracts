@@ -104,9 +104,6 @@ pub enum QueryMsg {
         app_id: u64,
     },
 
-    ListDetailedAppProposals {
-        app_id: u64,
-    },
     Test{ query:ComdexQuery}
     ,
     AppAllUpData {

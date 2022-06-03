@@ -59,9 +59,7 @@ pub struct Proposal {
     pub deposit :Vec<Coin>,
     pub proposer : String,
     pub token_denom :String,
-    pub deposit_refunded: bool,
     pub min_deposit:u64,
-    pub deposit_denom:String,
     pub current_deposit:u128
 }
 

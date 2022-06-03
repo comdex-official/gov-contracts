@@ -161,7 +161,9 @@ pub fn execute_propose(
         return Err(ContractError::AdditionalDenomDeposit {})
     }
     //check if gov denom exists in user deposit
-
+    
+    //check current deposit
+    
     let mut current_deposit:u128=0;
     let mut is_correct_denom=false;
     for user_deposit in &info.funds{
@@ -248,9 +250,7 @@ pub fn execute_propose(
         deposit:info.funds.clone(),
         proposer :info.sender.to_string(),
         token_denom : gov_token_denom.clone(),
-        deposit_refunded:false,
         min_deposit:min_gov_deposit,
-        deposit_denom:gov_token_denom,
         current_deposit:current_deposit,
     };
     
@@ -377,7 +377,6 @@ pub fn execute_execute(
         return Err(ContractError::NotExpiredYet {});
     }
 
-
     // set it to executed
     prop.status = Status::Executed;
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
@@ -396,34 +395,39 @@ pub fn execute_deposit(
     proposal_id: u64,
 ) -> Result<Response<ComdexMessages>, ContractError> {
 
-
     let mut  prop = PROPOSALS.load(deps.storage, proposal_id)?;
-    if prop.status!=Status::Open || prop.status!=Status::Pending
+    
+    // only Open or Poending Proposals are eligible for deposit
+
+    if [ Status::Executed,Status::Rejected,Status::Passed]
+    .iter()
+    .any(|x| *x == prop.status)
     {
-        return Err(ContractError::CannotDeposit {});
+    return  Err(ContractError::CannotDeposit {});
     }
+
+    // Get user deposit info for the proposal and update the deposit data
+
     let mut deposit_info = match VOTERDEPOSIT.may_load(deps.storage, (proposal_id, &info.sender))?
     {
         Some(record) => record,
         None => vec![]
     };
-
     let mut deposit_amount:u128=0;
     if deposit_info!=vec![]{
-    for mut d in deposit_info.clone(){
-        for  k in info.funds.clone(){
-            if k.denom==d.denom{
-                d.amount=d.amount+k.amount;
-                deposit_amount=d.amount.u128();
-            }
-        }
-    }
+        for mut current_deposit_coin in deposit_info.clone(){
+                for  new_deposit_coin in info.funds.clone(){
+                    if new_deposit_coin.denom==current_deposit_coin.denom{
+                        current_deposit_coin.amount=current_deposit_coin.amount+new_deposit_coin.amount;
+                        deposit_amount=new_deposit_coin.amount.u128();
+                        }
+                    }
+                }
     }
     else 
     {   let mut is_correct_fund=false;
-        for deposit_iter in info.funds.clone()
-        {
-            if prop.deposit_denom==deposit_iter.denom
+        for deposit_iter in info.funds.clone(){
+            if prop.token_denom==deposit_iter.denom
             {
                 deposit_amount=deposit_iter.amount.u128();
                 is_correct_fund=true;
@@ -448,7 +452,6 @@ pub fn execute_deposit(
     VOTERDEPOSIT.save(deps.storage, (proposal_id, &info.sender), &deposit_info)?;
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
-    prop.deposit_refunded=true;
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
     
     Ok(Response::new()
@@ -465,9 +468,9 @@ pub fn execute_refund(
 ) -> Result<Response<ComdexMessages>, ContractError> {
 
     let   prop = PROPOSALS.load(deps.storage, proposal_id)?;
-    if [ Status::Passed,Status::Executed]
+    if [ Status::Pending,Status::Rejected,Status::Open]
         .iter()
-        .any(|x| *x != prop.status)
+        .any(|x| *x == prop.status)
     {
         return Err(ContractError::NonPassedProposalRefund {});
     }
@@ -477,18 +480,15 @@ pub fn execute_refund(
     
     }
 
-    let deposit_info = match VOTERDEPOSIT.may_load(deps.storage, (proposal_id, &info.sender))?
-    {
-        Some(record) => record,
-        None => vec![]
-    };
-
-    if deposit_info==vec![]
+    let deposit_info =  VOTERDEPOSIT.may_load(deps.storage, (proposal_id, &info.sender))?;
+    
+    if let None=deposit_info
     {
         return Err(ContractError::NoDeposit {});
     }
 
-  
+    //// need to update current_deposit////////
+    
     VOTERDEPOSIT.remove(deps.storage, (proposal_id, &info.sender));
 
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
@@ -496,7 +496,7 @@ pub fn execute_refund(
     Ok(Response::new()
         .add_message(BankMsg::Send {
             to_address: info.sender.to_string(),
-            amount:deposit_info
+            amount:deposit_info.unwrap()
         })
         .add_attribute("action", "refund")
         .add_attribute("sender", info.sender)
@@ -525,7 +525,6 @@ pub fn query(deps: Deps<ComdexQuery>, env: Env, msg: QueryMsg) -> StdResult<Bina
             limit,
         } => to_binary(&list_votes(deps, proposal_id, start_after, limit)?),
         QueryMsg::ListAppProposal { app_id } => to_binary(&get_proposals_by_app(deps, env,app_id)?),
-        QueryMsg::ListDetailedAppProposals { app_id } => to_binary(&get_all_proposals_by_app(deps, app_id)?),
         QueryMsg::AppAllUpData { app_id } => to_binary(&get_all_up_info_by_app(deps,env, app_id)?),
 
         
@@ -567,6 +566,7 @@ fn query_proposal_detailed(deps: Deps<ComdexQuery>, env: Env, id: u64) -> StdRes
         token_denom:prop.token_denom,
         total_weight:prop.total_weight,
         current_deposit:prop.current_deposit,
+        
     })
 }
 
@@ -612,15 +612,7 @@ fn get_proposals_by_app(deps: Deps<ComdexQuery>,env:Env,app_id : u64) -> StdResu
 }
 
 
-fn get_all_proposals_by_app(deps: Deps<ComdexQuery>,app_id : u64) -> StdResult<Vec<AppProposalConfig>> {
-    let info= match APPPROPOSALS.may_load(deps.storage,app_id )?{ 
-            Some(record) => Some(record),
-            None => Some(vec![]) 
-    };
 
-    Ok(info.unwrap())
-
-}
 
 fn get_all_up_info_by_app(deps: Deps<ComdexQuery>,env:Env,app_id : u64) -> StdResult<AppGovConfig> {
     let info= match PROPOSALSBYAPP.may_load(deps.storage,app_id )?{ 
