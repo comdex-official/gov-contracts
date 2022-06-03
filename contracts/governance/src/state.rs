@@ -1,9 +1,11 @@
+use std::ops::Mul;
+
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::{Addr, BlockInfo, Decimal, StdResult, Storage, Uint128, Coin};
+use cosmwasm_std::{Addr, BlockInfo, Decimal, StdResult, Storage, Uint128, Coin, Timestamp};
 use cw3::{Status, Vote};
 use cw_storage_plus::{Item, Map};
-use cw_utils::{ Expiration, Threshold};
+use cw_utils::{ Expiration, Threshold, Duration};
 use comdex_bindings::ComdexMessages;
 
 // we multiply by this when calculating needed_votes in order to round up properly
@@ -19,14 +21,35 @@ pub struct Config {
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct AppGovConfig {
+    pub proposal_count: u64,
+   
+    pub current_supply:u64,
+
+    pub active_participation_supply : u128,
+   
+}
+
+
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct AppProposalConfig {
+    pub proposal_id: u64,
+   
+    pub proposal:Proposal,
+   
+}
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 
 pub struct Proposal {
     pub title: String,
+    pub start_time:Timestamp,
     pub description: String,
     pub start_height: u64,
     pub expires: Expiration,
     pub msgs: Vec<ComdexMessages>,
     pub status: Status,
+    pub duration:Duration,
     /// pass requirements
     pub threshold: Threshold,
     // the total weight when the proposal started (used to calculate percentages)
@@ -52,7 +75,8 @@ impl Proposal {
         if status == Status::Open && self.is_passed(block) {
             status = Status::Passed;
         }
-        if status == Status::Open && (self.is_rejected(block) || self.expires.is_expired(block)) {
+        if (status == Status::Open || status == Status::Pending)  && (self.is_rejected(block) || self.expires.is_expired(block))
+            {
             status = Status::Rejected;
         }
 
@@ -81,6 +105,9 @@ impl Proposal {
             Threshold::ThresholdQuorum { threshold, quorum } => {
                 // we always require the quorum
                 if self.votes.total() < votes_needed(self.total_weight, quorum) {
+                    return false;
+                }
+                if self.votes.veto> 1.mul(self.votes.total()/3) {
                     return false;
                 }
                 if self.expires.is_expired(block) {
@@ -202,7 +229,9 @@ pub const BALLOTS: Map<(u64, &Addr), Ballot> = Map::new("votes");
 pub const PROPOSALSBYAPP: Map<u64, Vec<u64>> = Map::new("ProposalsByApp");
 pub const PROPOSALS: Map<u64, Proposal> = Map::new("proposals");
 pub const VOTERDEPOSIT: Map<(u64, &Addr), Vec<Coin>> = Map::new("voter deposit");
-pub const PROPOSALVOTE: Map<u64,VoteWeight> = Map::new("vote weight");
+pub const APPPROPOSALS: Map<u64,Vec<AppProposalConfig>> = Map::new("proposals-by-app");
+pub const APPGOVCONFIG: Map<u64,AppGovConfig> = Map::new("app_gov_config");
+
 
 
 pub fn next_id(store: &mut dyn Storage) -> StdResult<u64> {

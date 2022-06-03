@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use cosmwasm_std::Coin;
 use cw3::{
-    ProposalListResponse, ProposalResponse, Status, Vote, VoteInfo, VoteListResponse, VoteResponse,
+     Status, 
     };
 pub fn assert_sent_sufficient_coin_deposit(
     sent: &[Coin],

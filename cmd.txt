@@ -1,5 +1,7 @@
 
-wallet:    comdex1ykm3v5ewnn4p5kuzp9hm6xnfmqjw57k4fz6xql
+wallet:    comdex17f3wzelrxdvlpjm8kh75tknlr0l3kvvydq2t6w
+
+contract addr : comdex1nc5tatafv6eyq7llkr2gv50ff9e22mnf70qgjlv737ktmt4eswrqdfklyz
 
 ////// upload////////
 
@@ -15,7 +17,7 @@ INIT='{
 "threshold":{"threshold_quorum":{"threshold":"0.55","quorum":"0.33"}},
                     "target":"0.0.0.0:9090"}'
 
-comdex tx wasm instantiate 1  "$INIT" --from cooluser  --keyring-backend test --chain-id test-1 --gas auto --gas-adjustment 1.3 --label "HBRTEST" --no-admin  -y                                     
+comdex tx wasm instantiate 2 "$INIT" --from cooluser  --keyring-backend test --chain-id test-1 --gas auto --gas-adjustment 1.3 --label "HBRTEST" --no-admin  -y                                     
 
 
 
@@ -24,15 +26,17 @@ comdex tx wasm instantiate 1  "$INIT" --from cooluser  --keyring-backend test --
 /////// EXECUTE /////////
 
 EXECUTE='{"propose":
-            {"title":"new proposal",
-             "description" :"test proposal",
-             "msgs" : [{"msg_white_list_asset_locker":{"app_mapping_id":3,"asset_id":3}}],
-             "app_id" :3
+            {"title":"new proposal for whitelist asset",
+             "description" :"test proposal whitelist asset",
+             "msgs" : [{"msg_white_list_asset_locker":{"app_mapping_id":1,"asset_id":1}}],
+             "app_id" :1
             }}'
+EXECUTE='{"refund": {"proposal_id":1}}'
 
 EXECUTE='{"execute": {"proposal_id":1}}'
 EXECUTE='{"refund": {"proposal_id":1}}'
-EXECUTE='{"vote": {"proposal_id":1,"vote":"no"}}'
+EXECUTE='{"vote": {"proposal_id":1,"vote":"abstain"}}'
+EXECUTE='{"deposit": {"proposal_id":1}}'
 
 
 
@@ -83,7 +87,7 @@ EXECUTE='{"test": {"msg":{"msg_set_auction_mapping_for_app":{"app_mapping_id" :1
                                                             "is_debt_auction":[true]
                                                             }}}}'
 
-comdex tx wasm execute comdex14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9spunaxy  "$EXECUTE" --from cooluser    --keyring-backend test  --chain-id test-1 --gas auto -y
+comdex tx wasm execute comdex1ghd753shjuwexxywmgs4xz7x2q732vcnkm6h2pyv9s6ah3hylvrqfy9rd8  "$EXECUTE" --from normaluser    --keyring-backend test  --chain-id test-1 --gas auto -y
 
 
 //////// Query///////////////
@@ -125,7 +129,10 @@ QUERY='{"threshold":{"proposal_id":1}}'
 
 QUERY='{"proposal":{"proposal_id":1}}'
 
-QUERY='{"list_app_proposal":{"proposal_id":3}}'
+QUERY='{"list_app_proposal":{"app_id":1}}'
 
-comdex q wasm contract-state smart comdex14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9spunaxy  "$QUERY" --chain-id test-1    
+QUERY='{"app_all_up_data":{"app_id":1}}'
+
+
+comdex q wasm contract-state smart comdex1ghd753shjuwexxywmgs4xz7x2q732vcnkm6h2pyv9s6ah3hylvrqfy9rd8  "$QUERY" --chain-id test-1    
 

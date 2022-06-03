@@ -1,13 +1,11 @@
-use std::borrow::Borrow;
 use std::cmp::Ordering;
-
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Binary, BlockInfo, Deps, DepsMut, Env, MessageInfo, Order,
     Response, StdResult,BankMsg,Coin,QueryRequest, Uint128,
 };
-use crate::coin_helpers::{assert_sent_sufficient_coin, assert_sent_sufficient_coin_deposit};
+use crate::coin_helpers::{ assert_sent_sufficient_coin_deposit};
 use comdex_bindings::ComdexMessages;
 use comdex_bindings::{ComdexQuery,MessageValidateResponse};
 use cw2::set_contract_version;
@@ -18,7 +16,7 @@ use cw_storage_plus::Bound;
 use cw_utils::{Expiration, ThresholdResponse,Duration,Threshold};
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg,ProposalResponseTotal};
-use crate::state::{next_id, Ballot, Config, Proposal, Votes,VoteWeight, BALLOTS, CONFIG, PROPOSALS,PROPOSALSBYAPP,VOTERDEPOSIT,PROPOSALVOTE};
+use crate::state::{next_id, Ballot, Config, Proposal, Votes,AppGovConfig,AppProposalConfig, BALLOTS, CONFIG, PROPOSALS,PROPOSALSBYAPP,VOTERDEPOSIT,APPPROPOSALS,APPGOVCONFIG};
 use crate::validation::{whitelistassetlockereligible,query_owner_token_at_height,query_app_exists,get_token_supply,query_get_asset_data,
     whitelistassetlockerrewards,whitelistappidvaultinterest,validate_threshold,addextendedpairvault,collectorlookuptable,updatepairvaultstability
 ,auctionmappingforapp,updatelockerlsr};
@@ -238,9 +236,11 @@ pub fn execute_propose(
     let mut prop = Proposal {
         title,
         description,
+        start_time:env.block.time,
         start_height: env.block.height,
         expires,
         msgs,
+        duration:max_voting_period,
         status: deposit_status,
         votes: Votes::yes(voting_power.amount.u128()),
         threshold: cfg.threshold,
@@ -252,25 +252,24 @@ pub fn execute_propose(
         min_deposit:min_gov_deposit,
         deposit_denom:gov_token_denom,
         current_deposit:current_deposit,
+    };
+    
+    
+ 
+    let mut app_proposals = match APPPROPOSALS.may_load(deps.storage, app_id)?
+    {
+        Some(record) => record,
+        None => vec![]
+    };
+    
 
-    };
-    
-    
-    let  vote_weight=VoteWeight{
-        yes:voting_power.amount.u128(),
-        no:0,
-        abstain:0,
-        veto:0
-    };
-    
-   
     prop.update_status(&env.block);
     
     //get latest proposal id counter
     let id = next_id(deps.storage)?;
     PROPOSALS.save(deps.storage, id, &prop)?;
-    PROPOSALVOTE.save(deps.storage, id, &vote_weight)?;
-
+    app_proposals.push(crate::state::AppProposalConfig { proposal_id: id, proposal: prop.clone() });
+    APPPROPOSALS.save(deps.storage, app_id, &app_proposals)?;
     // add the first yes vote from voter
     let ballot = Ballot {
         weight: voting_power.amount.u128(),
@@ -284,10 +283,23 @@ pub fn execute_propose(
     {Some(data)=>Some(data),
         None=>Some(vec![])};
 
+    let mut app_gov_info = match APPGOVCONFIG.may_load(deps.storage, app_id)?
+    {Some(data)=>data,
+        None=>(AppGovConfig{proposal_count:0,
+                                current_supply:total_weight,
+                                active_participation_supply:0})};
     
+    
+    app_gov_info.proposal_count=app_gov_info.proposal_count+1;
+    app_gov_info.current_supply= total_weight;      
+
+
     let mut app_proposals=propbyapp.unwrap();
+
     app_proposals.push(id);
     PROPOSALSBYAPP.save(deps.storage, app_id, &app_proposals)?;
+    APPGOVCONFIG.save(deps.storage, app_id, &app_gov_info)?;
+
     Ok(Response::new()
         .add_attribute("action", "propose")
         .add_attribute("sender", info.sender)
@@ -305,7 +317,6 @@ pub fn execute_vote(
 
     // ensure proposal exists and can be voted on
     let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
-    let mut vote_weight = PROPOSALVOTE.load(deps.storage, proposal_id)?;
     
 
     if prop.status != Status::Open {
@@ -333,19 +344,12 @@ pub fn execute_vote(
         }),
     })?;
 
-    match vote{
-        Vote::Yes => {vote_weight.yes=vote_weight.yes+voting_power.amount.u128();},
-        Vote::No => {vote_weight.no=vote_weight.no+voting_power.amount.u128();},
-        Vote::Abstain => {vote_weight.abstain=vote_weight.abstain+voting_power.amount.u128();},
-        Vote::Veto => {vote_weight.veto=vote_weight.veto+voting_power.amount.u128();},
-    }
     
 
     // update vote tally
     prop.votes.add_vote(vote, voting_power.amount.u128());
     prop.update_status(&env.block);
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
-    PROPOSALVOTE.save(deps.storage, proposal_id, &vote_weight)?;
     Ok(Response::new()
         .add_attribute("action", "vote")
         .add_attribute("sender", info.sender)
@@ -387,18 +391,16 @@ pub fn execute_execute(
 }
 pub fn execute_deposit(
     deps: DepsMut<ComdexQuery>,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     proposal_id: u64,
 ) -> Result<Response<ComdexMessages>, ContractError> {
 
 
     let mut  prop = PROPOSALS.load(deps.storage, proposal_id)?;
-    if ![ Status::Pending,Status::Open]
-        .iter()
-        .any(|x| *x != prop.status)
+    if prop.status!=Status::Open || prop.status!=Status::Pending
     {
-        return Err(ContractError::WrongRefundStatus {});
+        return Err(ContractError::CannotDeposit {});
     }
     let mut deposit_info = match VOTERDEPOSIT.may_load(deps.storage, (proposal_id, &info.sender))?
     {
@@ -423,16 +425,15 @@ pub fn execute_deposit(
         {
             if prop.deposit_denom==deposit_iter.denom
             {
-                deposit_amount=deposit_amount+deposit_iter.amount.u128();
+                deposit_amount=deposit_iter.amount.u128();
                 is_correct_fund=true;
-
             }
         }
         if is_correct_fund{
             deposit_info=info.funds;
         }
         else {
-            return Err(ContractError::WrongRefundStatus {})
+            return Err(ContractError::IncorrectDenomDeposit {})
         }
     }
 
@@ -446,16 +447,6 @@ pub fn execute_deposit(
 
     VOTERDEPOSIT.save(deps.storage, (proposal_id, &info.sender), &deposit_info)?;
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
-
-    if [Status::Pending]
-        .iter()
-        .any(|x| *x != prop.status)
-    {
-        return Err(ContractError::WrongRefundStatus {});
-    }
-
-    
-    
 
     prop.deposit_refunded=true;
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
@@ -474,7 +465,7 @@ pub fn execute_refund(
 ) -> Result<Response<ComdexMessages>, ContractError> {
 
     let   prop = PROPOSALS.load(deps.storage, proposal_id)?;
-    if ![ Status::Passed,Status::Executed]
+    if [ Status::Passed,Status::Executed]
         .iter()
         .any(|x| *x != prop.status)
     {
@@ -533,8 +524,9 @@ pub fn query(deps: Deps<ComdexQuery>, env: Env, msg: QueryMsg) -> StdResult<Bina
             start_after,
             limit,
         } => to_binary(&list_votes(deps, proposal_id, start_after, limit)?),
-        QueryMsg::ListAppProposal { app_id } => to_binary(&get_proposals_by_app(deps, app_id)?),
-        QueryMsg::ProposalWeight { proposal_id } => to_binary(&query_proposal_weight(deps, env,proposal_id)?),
+        QueryMsg::ListAppProposal { app_id } => to_binary(&get_proposals_by_app(deps, env,app_id)?),
+        QueryMsg::ListDetailedAppProposals { app_id } => to_binary(&get_all_proposals_by_app(deps, app_id)?),
+        QueryMsg::AppAllUpData { app_id } => to_binary(&get_all_up_info_by_app(deps,env, app_id)?),
 
         
     }
@@ -565,35 +557,21 @@ fn query_proposal_detailed(deps: Deps<ComdexQuery>, env: Env, id: u64) -> StdRes
         description: prop.description,
         msgs: prop.msgs,
         status,
+        start_time: prop.start_time,
         expires: prop.expires,
         votes:prop.votes,
+        duration:prop.duration,
         start_height:prop.start_height,
         threshold:prop.threshold,
         proposer:prop.proposer,
         token_denom:prop.token_denom,
         total_weight:prop.total_weight,
-        deposit:prop.deposit
-    })
-}
-fn query_proposal(deps: Deps<ComdexQuery>, env: Env, id: u64) -> StdResult<ProposalResponse> {
-    let prop = PROPOSALS.load(deps.storage, id)?;
-    let status = prop.current_status(&env.block);
-    let threshold = prop.threshold.to_response(prop.total_weight);
-    Ok(ProposalResponse {
-        id,
-        title: prop.title,
-        description: prop.description,
-        msgs: prop.msgs,
-        status,
-        expires: prop.expires,
-        threshold,
+        current_deposit:prop.current_deposit,
     })
 }
 
-fn query_proposal_weight(deps: Deps<ComdexQuery>, _env: Env, proposal_id:  u64) -> StdResult<VoteWeight> {
-    let prop = PROPOSALVOTE.load(deps.storage, proposal_id)?;
-    Ok(prop)
-}
+
+
 // settings for pagination
 const MAX_LIMIT: u32 = 300;
 const DEFAULT_LIMIT: u32 = 10;
@@ -615,13 +593,51 @@ fn list_proposals(
     Ok(ProposalListResponse{ proposals })
 }
 
-fn get_proposals_by_app(deps: Deps<ComdexQuery>,app_id : u64) -> StdResult<Vec<u64>> {
+fn get_proposals_by_app(deps: Deps<ComdexQuery>,env:Env,app_id : u64) -> StdResult<Vec<ProposalResponseTotal>> {
     let info= match PROPOSALSBYAPP.may_load(deps.storage,app_id )?{ 
+            Some(record) => record,
+            None => vec![]
+    };
+
+    let mut all_proposals=vec![];
+
+    for i in info
+    {
+        let proposal=query_proposal_detailed(deps,env.clone(),i)?;
+        all_proposals.push(proposal);
+    }
+
+
+    Ok(all_proposals)
+}
+
+
+fn get_all_proposals_by_app(deps: Deps<ComdexQuery>,app_id : u64) -> StdResult<Vec<AppProposalConfig>> {
+    let info= match APPPROPOSALS.may_load(deps.storage,app_id )?{ 
             Some(record) => Some(record),
             None => Some(vec![]) 
     };
 
     Ok(info.unwrap())
+
+}
+
+fn get_all_up_info_by_app(deps: Deps<ComdexQuery>,env:Env,app_id : u64) -> StdResult<AppGovConfig> {
+    let info= match PROPOSALSBYAPP.may_load(deps.storage,app_id )?{ 
+        Some(record) => record,
+        None => vec![]
+};
+    let mut participation_info= APPGOVCONFIG.may_load(deps.storage,app_id )?.unwrap();
+    let mut total_votes_weight:u128=0;
+    for i in info
+    {
+        let proposal=query_proposal_detailed(deps,env.clone(),i)?;
+         total_votes_weight=total_votes_weight+proposal.votes.total();
+    }
+    participation_info.active_participation_supply=total_votes_weight;
+
+
+    Ok(participation_info)
 }
 
 fn reverse_proposals(

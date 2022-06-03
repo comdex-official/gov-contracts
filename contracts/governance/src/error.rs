@@ -93,6 +93,14 @@ pub enum ContractError {
     #[error("Cannot initiate the refund")]
     WrongRefundStatus {},
 
+    #[error("IncorrectDenomDeposit")]
+    IncorrectDenomDeposit {},
+
+
+    #[error("Proposal must be open or pending to deposit")]
+    CannotDeposit {},
+
+
     #[error("Total Gov Token Supply is 0")]
     ZeroSupply {},
 
