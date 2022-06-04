@@ -66,9 +66,7 @@ pub enum ExecuteMsg {
     Refund {
         proposal_id: u64,
     },
-    Test {
-        msg:ComdexMessages
-    },
+
     Deposit {
         proposal_id: u64,
     }
@@ -103,9 +101,7 @@ pub enum QueryMsg {
     ListAppProposal {
         app_id: u64,
     },
-
-    Test{ query:ComdexQuery}
-    ,
+    
     AppAllUpData {
         app_id: u64,
     }

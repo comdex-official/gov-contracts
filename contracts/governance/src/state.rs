@@ -24,7 +24,7 @@ pub struct Config {
 pub struct AppGovConfig {
     pub proposal_count: u64,
    
-    pub current_supply:u64,
+    pub current_supply:u128,
 
     pub active_participation_supply : u128,
    
@@ -69,14 +69,22 @@ impl Proposal {
     pub fn current_status(&self, block: &BlockInfo) -> Status {
         let mut status = self.status;
 
-        // if open, check if voting is passed or timed out
-        if status == Status::Open && self.is_passed(block) {
-            status = Status::Passed;
-        }
-        if (status == Status::Open || status == Status::Pending)  && (self.is_rejected(block) || self.expires.is_expired(block))
+      
+        if status == Status::Pending  && self.expires.is_expired(block)
             {
             status = Status::Rejected;
+            }
+
+        if self.expires.is_expired(block) && self.is_passed(block)
+        {
+            status = Status::Passed;
         }
+
+        if self.expires.is_expired(block) && self.is_rejected(block)
+        {
+            status = Status::Rejected;
+        }
+
 
         status
     }
@@ -105,18 +113,18 @@ impl Proposal {
                 if self.votes.total() < votes_needed(self.total_weight, quorum) {
                     return false;
                 }
-                if self.votes.veto> 1.mul(self.votes.total()/3) {
+
+                if self.votes.veto> (Decimal::percent(33) *Uint128::from(self.votes.total())).u128() {
                     return false;
                 }
-                if self.expires.is_expired(block) {
+                if self.votes.total() == self.votes.abstain {
+                    return false;
+                }
+                else {
                     // If expired, we compare vote_count against the total number of votes (minus abstain).
                     let opinions = self.votes.total() - self.votes.abstain;
                     self.votes.yes >= votes_needed(opinions, threshold)
-                } else {
-                    // If not expired, we must assume all non-votes will be cast against
-                    let possible_opinions = self.total_weight - self.votes.abstain;
-                    self.votes.yes >= votes_needed(possible_opinions, threshold)
-                }
+                } 
             }
         }
     }
@@ -142,13 +150,29 @@ impl Proposal {
             }
             Threshold::ThresholdQuorum {
                 threshold,
-                quorum: _,
+                quorum,
             } => {
+                if self.votes.total() < votes_needed(self.total_weight, quorum) {
+                    return true;
+                }
                 if self.expires.is_expired(block) {
                     // If expired, we compare vote_count against the total number of votes (minus abstain).
                     let opinions = self.votes.total() - self.votes.abstain;
-                    self.votes.no > votes_needed(opinions, Decimal::one() - threshold)
-                } else {
+                    return self.votes.no > votes_needed(opinions, Decimal::one() - threshold);
+                } 
+
+                if self.votes.veto> (Decimal::percent(33) *Uint128::from(self.votes.total())).u128() {
+                    return true;
+                }
+                if self.votes.total() == self.votes.abstain {
+                    return true;
+                }
+                let opinions = self.votes.total() - self.votes.abstain;
+                if self.votes.yes <= votes_needed(opinions, threshold)
+                {
+                    return true;
+                }
+                else {
                     // If not expired, we must assume all non-votes will be cast for
                     let possible_opinions = self.total_weight - self.votes.abstain;
                     self.votes.no > votes_needed(possible_opinions, Decimal::one() - threshold)

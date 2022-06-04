@@ -67,26 +67,11 @@ pub fn execute(
         ExecuteMsg::Vote { proposal_id, vote } => execute_vote(deps, env, info, proposal_id, vote),
         ExecuteMsg::Execute { proposal_id } => execute_execute(deps, env, info, proposal_id),
         ExecuteMsg::Refund { proposal_id } => execute_refund(deps, env, info, proposal_id),
-        ExecuteMsg::Test { msg } => execute_execute1(deps, env, info, msg),
         ExecuteMsg::Deposit { proposal_id} => execute_deposit(deps, env, info, proposal_id),
 
     }
 }
 
-pub fn execute_execute1(
-    _deps: DepsMut<ComdexQuery>,
-    _env: Env,
-    info: MessageInfo,
-    msg:ComdexMessages
-) -> Result<Response<ComdexMessages>, ContractError> {
-    // anyone can trigger this if the vote passed
-    // dispatch all proposed messages
-    Ok(Response::new()
-        .add_message(msg)
-        .add_attribute("action", "execute")
-        .add_attribute("sender", info.sender)
-        )
-}
 
 pub fn execute_propose(
     deps: DepsMut<ComdexQuery>,
@@ -286,12 +271,12 @@ pub fn execute_propose(
     let mut app_gov_info = match APPGOVCONFIG.may_load(deps.storage, app_id)?
     {Some(data)=>data,
         None=>(AppGovConfig{proposal_count:0,
-                                current_supply:total_weight,
+                                current_supply:Uint128::from(total_weight).u128(),
                                 active_participation_supply:0})};
     
     
     app_gov_info.proposal_count=app_gov_info.proposal_count+1;
-    app_gov_info.current_supply= total_weight;      
+    app_gov_info.current_supply= Uint128::from(total_weight).u128();      
 
 
     let mut app_proposals=propbyapp.unwrap();
@@ -317,9 +302,9 @@ pub fn execute_vote(
 
     // ensure proposal exists and can be voted on
     let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
-    
+    let status = prop.current_status(&env.block);
 
-    if prop.status != Status::Open {
+    if status != Status::Open {
         return Err(ContractError::NotOpen {});
     }
     if prop.expires.is_expired(&env.block) {
@@ -344,8 +329,6 @@ pub fn execute_vote(
         }),
     })?;
 
-    
-
     // update vote tally
     prop.votes.add_vote(vote, voting_power.amount.u128());
     prop.update_status(&env.block);
@@ -366,9 +349,11 @@ pub fn execute_execute(
     // anyone can trigger the execution if the vote passed
 
     let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
+    let status = prop.current_status(&env.block);
+
     // we allow execution even after the proposal "expiration" as long as all vote come in before
     // that point. If it was approved on time, it can be executed any time.
-    if prop.status != Status::Passed {
+    if status != Status::Passed {
         return Err(ContractError::WrongExecuteStatus {});
     }
 
@@ -390,18 +375,19 @@ pub fn execute_execute(
 }
 pub fn execute_deposit(
     deps: DepsMut<ComdexQuery>,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     proposal_id: u64,
 ) -> Result<Response<ComdexMessages>, ContractError> {
 
     let mut  prop = PROPOSALS.load(deps.storage, proposal_id)?;
-    
+    let status = prop.current_status(&env.block);
+
     // only Open or Poending Proposals are eligible for deposit
 
     if [ Status::Executed,Status::Rejected,Status::Passed]
     .iter()
-    .any(|x| *x == prop.status)
+    .any(|x| *x == status)
     {
     return  Err(ContractError::CannotDeposit {});
     }
@@ -468,9 +454,10 @@ pub fn execute_refund(
 ) -> Result<Response<ComdexMessages>, ContractError> {
 
     let   prop = PROPOSALS.load(deps.storage, proposal_id)?;
+    let status = prop.current_status(&env.block);
     if [ Status::Pending,Status::Rejected,Status::Open]
         .iter()
-        .any(|x| *x == prop.status)
+        .any(|x| *x == status)
     {
         return Err(ContractError::NonPassedProposalRefund {});
     }
@@ -507,7 +494,6 @@ pub fn execute_refund(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps<ComdexQuery>, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Test {query} => to_binary(&get_test(deps,query)?),
 
         QueryMsg::Threshold {proposal_id} => to_binary(&query_threshold(deps,proposal_id)?),
         QueryMsg::Proposal { proposal_id } => to_binary(&query_proposal_detailed(deps, env, proposal_id)?),
@@ -530,13 +516,7 @@ pub fn query(deps: Deps<ComdexQuery>, env: Env, msg: QueryMsg) -> StdResult<Bina
         
     }
 }
-fn get_test(deps: Deps<ComdexQuery>,query:ComdexQuery) -> StdResult<MessageValidateResponse> {
-    let voting_power=deps
-    .querier
-    .query::<MessageValidateResponse>(&QueryRequest::Custom(query))?;
-    
-    Ok(voting_power)
-}
+
 
 
 

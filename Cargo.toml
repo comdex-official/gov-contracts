@@ -1,8 +1,6 @@
 [workspace]
 members = ["packages/*", "contracts/*"]
 
-
-
 [profile.release.package.governance]
 codegen-units = 1
 incremental = false

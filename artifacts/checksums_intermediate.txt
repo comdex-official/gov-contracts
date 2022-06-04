@@ -1,1 +1,1 @@
-613abbec38abf3ffc056d13eb4d6a2403cbbff40298fa5909afb4465015904a0  target/wasm32-unknown-unknown/release/governance.wasm
+8782cdc1e84ac3452fab39780ed9868584ea07e98dc767e6ff0e866f1a8723f2  target/wasm32-unknown-unknown/release/governance.wasm
