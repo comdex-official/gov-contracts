@@ -1,5 +1,3 @@
-use std::ops::Mul;
-
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use cosmwasm_std::{Addr, BlockInfo, Decimal, StdResult, Storage, Uint128, Coin, Timestamp};
@@ -69,18 +67,23 @@ impl Proposal {
     pub fn current_status(&self, block: &BlockInfo) -> Status {
         let mut status = self.status;
 
+        if status == Status::Executed
+        {
+            status = Status::Executed;
+        }
+
       
-        if status == Status::Pending  && self.expires.is_expired(block)
+        else if status == Status::Pending  && self.expires.is_expired(block)
             {
             status = Status::Rejected;
             }
 
-        if self.expires.is_expired(block) && self.is_passed(block)
+        else if self.expires.is_expired(block) && self.is_passed(block)
         {
             status = Status::Passed;
         }
 
-        if self.expires.is_expired(block) && self.is_rejected(block)
+        else if self.expires.is_expired(block) && self.is_rejected(block)
         {
             status = Status::Rejected;
         }
@@ -97,7 +100,7 @@ impl Proposal {
 
     /// Returns true if this proposal is sure to pass (even before expiration, if no future
     /// sequence of possible votes could cause it to fail).
-    pub fn is_passed(&self, block: &BlockInfo) -> bool {
+    pub fn is_passed(&self, _block: &BlockInfo) -> bool {
         match self.threshold {
             Threshold::AbsoluteCount {
                 weight: weight_needed,
@@ -114,10 +117,10 @@ impl Proposal {
                     return false;
                 }
 
-                if self.votes.veto> (Decimal::percent(33) *Uint128::from(self.votes.total())).u128() {
+                else if self.votes.veto> (Decimal::percent(33) *Uint128::from(self.votes.total())).u128() {
                     return false;
                 }
-                if self.votes.total() == self.votes.abstain {
+                else if self.votes.total() == self.votes.abstain {
                     return false;
                 }
                 else {
@@ -129,8 +132,6 @@ impl Proposal {
         }
     }
 
-    /// Returns true if this proposal is sure to be rejected (even before expiration, if
-    /// no future sequence of possible votes could cause it to pass).
     pub fn is_rejected(&self, block: &BlockInfo) -> bool {
         match self.threshold {
             Threshold::AbsoluteCount {
@@ -152,23 +153,25 @@ impl Proposal {
                 threshold,
                 quorum,
             } => {
+                let opinions = self.votes.total() - self.votes.abstain;
+
+
                 if self.votes.total() < votes_needed(self.total_weight, quorum) {
                     return true;
                 }
-                if self.expires.is_expired(block) {
+                else if self.expires.is_expired(block) {
                     // If expired, we compare vote_count against the total number of votes (minus abstain).
                     let opinions = self.votes.total() - self.votes.abstain;
                     return self.votes.no > votes_needed(opinions, Decimal::one() - threshold);
                 } 
 
-                if self.votes.veto> (Decimal::percent(33) *Uint128::from(self.votes.total())).u128() {
+                else if self.votes.veto> (Decimal::percent(33) *Uint128::from(self.votes.total())).u128() {
                     return true;
                 }
-                if self.votes.total() == self.votes.abstain {
+                else if self.votes.total() == self.votes.abstain {
                     return true;
                 }
-                let opinions = self.votes.total() - self.votes.abstain;
-                if self.votes.yes <= votes_needed(opinions, threshold)
+                else if self.votes.yes <= votes_needed(opinions, threshold)
                 {
                     return true;
                 }

@@ -4,7 +4,7 @@ addr  coooluser comdex16elllt8grgsagua4ssgw3zwvqmayyvy24u7x8k
 
 add app_id
 
-comdex tx gov submit-proposal add-app-mapping Harbor hbr 100000000 300 --title addAsset --description addingAsset --from cooluser --deposit 10000000ucmdx --chain-id test-1 --keyring-backend test -y
+comdex tx gov submit-proposal add-app-mapping Harbor hbr 100000000 80 --title addAsset --description addingAsset --from cooluser --deposit 10000000ucmdx --chain-id test-1 --keyring-backend test -y
 
 comdex tx gov vote 1  yes --from cooluser --chain-id test-1 --keyring-backend test -y 
 
@@ -12,7 +12,7 @@ comdex tx gov vote 1  yes --from cooluser --chain-id test-1 --keyring-backend te
 
 add assets:
 
-comdex tx gov submit-proposal add-assets cmdx ucmdx   1000000  1  --title addAsset --description addingAsset --from cooluser --deposit 10000000ucmdx --chain-id test-1 --keyring-backend test -y
+comdex tx gov submit-proposal add-assets Harbor uhbr  1000000  1  --title addAsset --description addingAsset --from cooluser --deposit 10000000ucmdx --chain-id test-1 --keyring-backend test -y
 
 comdex tx gov submit-proposal add-assets  cmst ucmst   1000000  1  --title addAsset --description addingAsset --from cooluser --deposit 10000000ucmdx --chain-id test-1 --keyring-backend test -y
 
@@ -20,7 +20,8 @@ comdex tx gov vote 2  yes --from cooluser --chain-id test-1 --keyring-backend te
 
 add-pair
 
-comdex tx gov submit-proposal add-pairs 1 [asset-out]
+comdex tx gov submit-proposal add-pairs 1 2 --title addAsset --description addingAsset --from cooluser --deposit 10000000ucmdx --chain-id test-1 --keyring-backend test -y
+
 
 add-extended pair vaults
 
@@ -46,4 +47,4 @@ add asset_mapping
 
 
 
-comdex tx gov submit-proposal add-asset-mapping 1 1  100000000000  1 comdex1gh8tzd4gjvaavds7f5hqzakzwv5cp4efwm90ku --title addAsset --description addingAsset --from cooluser --deposit 10000000ucmdx --chain-id test-1 --keyring-backend test -y
+comdex tx gov submit-proposal add-asset-mapping 1 1  100000000000  1 comdex188u4d5l879y9lx4akp7daspdyurugm9dk9spyt --title addAsset --description addingAsset --from cooluser --deposit 10000000ucmdx --chain-id test-1 --keyring-backend test -y

@@ -39,6 +39,8 @@ pub enum ComdexMessages {
         asset_id: Vec<u64>,
         is_surplus_auction : Vec<bool>,
         is_debt_auction : Vec<bool>,
+        asset_out_oracle_price : Vec<bool>,
+        asset_out_price : Vec<u64>,
     },
 
     MsgWhitelistAppIdVaultInterest{
@@ -67,6 +69,28 @@ pub enum ComdexMessages {
         asset_id:u64,
         lsr:Decimal
     }
+    ,
+    MsgRemoveWhitelistAssetLocker
+    {
+        app_mapping_id: u64 , asset_id : u64
+    }
+    ,
+    MsgRemoveWhitelistAppIdVaultInterest
+    {
+        app_mapping_id:u64
+    }
+    ,
+    MsgWhitelistAppIdLiquidation
+    {
+        app_mapping_id:u64
+
+    },
+    MsgRemoveWhitelistAppIdLiquidation
+    {
+        app_mapping_id:u64
+
+    },
+
 }
 
 impl From<ComdexMessages> for CosmosMsg<ComdexMessages> {

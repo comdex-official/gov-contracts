@@ -1,1 +1,1 @@
-a472a49db655d4518bf329c8e51befdcfb064f45bf12499cbbaecb15b466f447  Governance.wasm
+ebbd55e9c2ae457bd0174827af0c1c4889f81b6fe99b418136ad59d38a80678c  Governance.wasm

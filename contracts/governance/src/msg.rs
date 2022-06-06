@@ -1,10 +1,9 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::{Coin, Timestamp};
-
+use cosmwasm_std::Timestamp;
 use cw3::{Status, Vote};
 use cw_utils::{ Expiration, Threshold, Duration};
-use comdex_bindings::{ComdexMessages,ComdexQuery};
+use comdex_bindings::{ComdexMessages};
 use crate::state::{Votes};
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct InstantiateMsg {

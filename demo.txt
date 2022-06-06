@@ -53,3 +53,18 @@ EXECUTE='{"propose":
             }}'      
 
 comdex tx wasm execute comdex14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9spunaxy  "$EXECUTE" --from normaluser  --amount 100000000uharbor --keyring-backend test  --chain-id test-1 --gas auto -y
+
+
+
+EXECUTE='{"propose":
+            {"title":"Activate Surplus/Debt Auction for an Asset",
+             "description" :"This is a base execution proposal to add activate surplus/debt auction for an asset",
+             "msgs" : [{"msg_set_auction_mapping_for_app":{"app_mapping_id" :1,
+                                                            "asset_id" :[1],
+                                                            "is_surplus_auction" :[true],
+                                                            "is_debt_auction":[true],
+                                                            "asset_out_oracle_price":[false],
+                                                            "asset_out_price":[1]
+                                                            }}],
+             "app_id" :1
+            }}'

@@ -3,11 +3,11 @@ use std::cmp::Ordering;
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Binary, BlockInfo, Deps, DepsMut, Env, MessageInfo, Order,
-    Response, StdResult,BankMsg,Coin,QueryRequest, Uint128,
+    Response, StdResult,BankMsg,Coin, Uint128,
 };
 use crate::coin_helpers::{ assert_sent_sufficient_coin_deposit};
 use comdex_bindings::ComdexMessages;
-use comdex_bindings::{ComdexQuery,MessageValidateResponse};
+use comdex_bindings::{ComdexQuery};
 use cw2::set_contract_version;
 use cw3::{
     ProposalListResponse, ProposalResponse, Status, Vote, VoteInfo, VoteListResponse, VoteResponse,
@@ -16,10 +16,10 @@ use cw_storage_plus::Bound;
 use cw_utils::{Expiration, ThresholdResponse,Duration,Threshold};
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg,ProposalResponseTotal};
-use crate::state::{next_id, Ballot, Config, Proposal, Votes,AppGovConfig,AppProposalConfig, BALLOTS, CONFIG, PROPOSALS,PROPOSALSBYAPP,VOTERDEPOSIT,APPPROPOSALS,APPGOVCONFIG};
+use crate::state::{next_id, Ballot, Config, Proposal, Votes,AppGovConfig, BALLOTS, CONFIG, PROPOSALS,PROPOSALSBYAPP,VOTERDEPOSIT,APPPROPOSALS,APPGOVCONFIG};
 use crate::validation::{whitelistassetlockereligible,query_owner_token_at_height,query_app_exists,get_token_supply,query_get_asset_data,
     whitelistassetlockerrewards,whitelistappidvaultinterest,validate_threshold,addextendedpairvault,collectorlookuptable,updatepairvaultstability
-,auctionmappingforapp,updatelockerlsr};
+,auctionmappingforapp,updatelockerlsr,removewhitelistassetlocker,removewhitelistappidvaultinterest,whitelistappidliquidation,removewhitelistappidliquidation};
 
 
 // version info for migration info
@@ -209,11 +209,15 @@ pub fn execute_propose(
             ComdexMessages::MsgSetAuctionMappingForApp{app_mapping_id,
                                                        asset_id:_,
                                                        is_surplus_auction:_,
-                                                       is_debt_auction:_} =>auctionmappingforapp(deps.as_ref(),app_mapping_id,app_id)?,
+                                                       is_debt_auction:_,
+                                                        asset_out_oracle_price:_,
+                                                        asset_out_price:_} =>auctionmappingforapp(deps.as_ref(),app_mapping_id,app_id)?,
 
-            ComdexMessages::MsgUpdateLsrInCollectorLookupTable{app_mapping_id,asset_id,lsr:_}=>updatelockerlsr(deps.as_ref(),app_mapping_id,asset_id,app_id)?
-                
-
+            ComdexMessages::MsgUpdateLsrInCollectorLookupTable{app_mapping_id,asset_id,lsr:_}=>updatelockerlsr(deps.as_ref(),app_mapping_id,asset_id,app_id)?,
+            ComdexMessages::MsgRemoveWhitelistAssetLocker{app_mapping_id,asset_id}=> removewhitelistassetlocker(deps.as_ref(),app_mapping_id,asset_id,app_id)?,   
+            ComdexMessages::MsgRemoveWhitelistAppIdVaultInterest{app_mapping_id}=>removewhitelistappidvaultinterest(deps.as_ref(),app_mapping_id,app_id)?,
+            ComdexMessages::MsgWhitelistAppIdLiquidation{app_mapping_id}=>whitelistappidliquidation(deps.as_ref(),app_mapping_id,app_id)?,
+            ComdexMessages::MsgRemoveWhitelistAppIdLiquidation{app_mapping_id}=>removewhitelistappidliquidation(deps.as_ref(),app_mapping_id,app_id)?,
         }
     }
 
@@ -383,7 +387,7 @@ pub fn execute_deposit(
     let mut  prop = PROPOSALS.load(deps.storage, proposal_id)?;
     let status = prop.current_status(&env.block);
 
-    // only Open or Poending Proposals are eligible for deposit
+    // only Open or Pending Proposals are eligible for deposit
 
     if [ Status::Executed,Status::Rejected,Status::Passed]
     .iter()
@@ -546,8 +550,8 @@ fn query_proposal_detailed(deps: Deps<ComdexQuery>, env: Env, id: u64) -> StdRes
         token_denom:prop.token_denom,
         total_weight:prop.total_weight,
         current_deposit:prop.current_deposit,
-        
     })
+
 }
 
 

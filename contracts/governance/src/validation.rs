@@ -70,6 +70,103 @@ pub fn updatelockerlsr(deps:Deps<ComdexQuery>,app_mapping_id:u64,asset_id:u64,ap
     
 }
 
+pub fn removewhitelistassetlocker(deps:Deps<ComdexQuery>,app_mapping_id:u64,asset_id:u64,app_id:u64)
+-> Result< (), ContractError>
+{
+    if app_mapping_id!=app_id
+    {
+        return Err(ContractError::DifferentAppID {})
+    }
+    let query= ComdexQuery::RemoveWhitelistAssetLockerQuery{app_mapping_id :app_mapping_id,asset_id:asset_id};
+    let query_result= deps
+    .querier
+    .query::<MessageValidateResponse>(&QueryRequest::Custom(query))?;
+
+    if query_result.found{
+        Ok(())
+
+    }
+    else {
+        let err=query_result.err;
+        return Err(ContractError::ProposalError {err})
+    }
+    
+}
+
+pub fn removewhitelistappidvaultinterest(deps:Deps<ComdexQuery>,app_mapping_id:u64,
+    app_id:u64)
+-> Result< (), ContractError>
+{
+    if app_mapping_id!=app_id
+    {
+        return Err(ContractError::DifferentAppID {})
+    }
+    let query= ComdexQuery::RemoveWhitelistAppIdVaultInterestQuery{app_mapping_id :app_mapping_id};
+    let query_result= deps
+    .querier
+    .query::<MessageValidateResponse>(&QueryRequest::Custom(query))?;
+
+    if query_result.found{
+        Ok(())
+
+    }
+    else {
+        let err=query_result.err;
+        return Err(ContractError::ProposalError {err})
+    }
+    
+}
+
+pub fn whitelistappidliquidation(deps:Deps<ComdexQuery>,app_mapping_id:u64,
+    app_id:u64)
+-> Result< (), ContractError>
+{
+    if app_mapping_id!=app_id
+    {
+        return Err(ContractError::DifferentAppID {})
+    }
+    let query= ComdexQuery::WhitelistAppIdLiquidationQuery{app_mapping_id :app_mapping_id};
+    let query_result= deps
+    .querier
+    .query::<MessageValidateResponse>(&QueryRequest::Custom(query))?;
+
+    if query_result.found{
+        Ok(())
+
+    }
+    else {
+        let err=query_result.err;
+        return Err(ContractError::ProposalError {err})
+    }
+    
+}
+
+pub fn removewhitelistappidliquidation(deps:Deps<ComdexQuery>,app_mapping_id:u64,
+    app_id:u64)
+-> Result< (), ContractError>
+{
+    if app_mapping_id!=app_id
+    {
+        return Err(ContractError::DifferentAppID {})
+    }
+    let query= ComdexQuery::RemoveWhitelistAppIdLiquidationQuery{app_mapping_id :app_mapping_id};
+    let query_result= deps
+    .querier
+    .query::<MessageValidateResponse>(&QueryRequest::Custom(query))?;
+
+    if query_result.found{
+        Ok(())
+
+    }
+    else {
+        let err=query_result.err;
+        return Err(ContractError::ProposalError {err})
+    }
+    
+}
+
+
+
 //check asset is available for rewards in locker
 pub fn whitelistassetlockerrewards(deps:Deps<ComdexQuery>,app_mapping_id:u64,asset_id:Vec<u64>,app_id:u64)
 -> Result< (), ContractError>
