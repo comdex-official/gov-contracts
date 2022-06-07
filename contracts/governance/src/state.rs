@@ -218,6 +218,15 @@ impl Votes {
             Vote::Veto => self.veto += weight,
         }
     }
+
+    pub fn subtract_vote(&mut self, vote: Vote, weight: u128) {
+        match vote {
+            Vote::Yes => self.yes -= weight,
+            Vote::Abstain => self.abstain -= weight,
+            Vote::No => self.no -= weight,
+            Vote::Veto => self.veto -= weight,
+        }
+    }
 }
 
 // this is a helper function so Decimal works with u64 rather than Uint128

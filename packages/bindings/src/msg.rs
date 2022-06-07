@@ -22,7 +22,8 @@ pub enum ComdexMessages {
         min_cr :Decimal,
         pair_name :String,
         asset_out_oracle_price:bool ,
-        assset_out_price:u64,
+        asset_out_price:u64,
+        min_usd_value_left:u64
     },
     MsgSetCollectorLookupTable{
         app_mapping_id : u64,
@@ -61,7 +62,8 @@ pub enum ComdexMessages {
         draw_down_fee:Decimal,
         min_cr:Decimal,
         debt_ceiling:u64,
-        debt_floor:u64
+        debt_floor:u64,
+        min_usd_value_left:u64
     }
     ,
     MsgUpdateLsrInCollectorLookupTable{

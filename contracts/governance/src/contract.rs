@@ -183,7 +183,8 @@ pub fn execute_propose(
                                                     min_cr:_,
                                                     pair_name,
                                                     asset_out_oracle_price:_,
-                                                    assset_out_price:_} =>addextendedpairvault(deps.as_ref(),app_mapping_id,pair_id,stability_fee,closing_fee,
+                                                    asset_out_price:_,
+                                                    min_usd_value_left:_} =>addextendedpairvault(deps.as_ref(),app_mapping_id,pair_id,stability_fee,closing_fee,
                                                                                                draw_down_fee,debt_ceiling,debt_floor,pair_name,app_id)?,
             ComdexMessages::MsgSetCollectorLookupTable{ app_mapping_id ,
                                                         collector_asset_id ,
@@ -203,7 +204,8 @@ pub fn execute_propose(
                                                      draw_down_fee:_,
                                                      min_cr:_,
                                                      debt_ceiling:_,
-                                                     debt_floor:_}=>updatepairvaultstability(deps.as_ref(),app_mapping_id,ext_pair_id,app_id)?,
+                                                     debt_floor:_,
+                                                     min_usd_value_left:_}=>updatepairvaultstability(deps.as_ref(),app_mapping_id,ext_pair_id,app_id)?,
 
 
             ComdexMessages::MsgSetAuctionMappingForApp{app_mapping_id,
@@ -316,23 +318,29 @@ pub fn execute_vote(
     }
 
     //Get Proposal Start Height
-    let proposal_height=prop.start_height;
+    let vote_power_height=prop.start_height-1;
+
     let cfg = CONFIG.load(deps.storage)?;
     let token_denom=&prop.token_denom;
     
     //Get Voter power at proposal height 
-    let voting_power=query_owner_token_at_height(deps.as_ref(),info.sender.to_string(),token_denom.to_string(),proposal_height.to_string(),cfg.target)?;
+    let voting_power=query_owner_token_at_height(deps.as_ref(),info.sender.to_string(),token_denom.to_string(),vote_power_height.to_string(),cfg.target)?;
 
+    let previous_vote= BALLOTS.may_load(deps.storage, (proposal_id, &info.sender))?;
+
+     if previous_vote.is_some()
+     {
+         let prev_vote=previous_vote.unwrap();
+         prop.votes.subtract_vote(prev_vote.vote, voting_power.amount.u128())
+     }
+
+     let ballot_new=Ballot {
+        weight: voting_power.amount.u128(),
+        vote,
+    };
+
+    BALLOTS.save(deps.storage, (proposal_id, &info.sender), &ballot_new)?;
     
-    // cast vote if no vote previously cast
-    BALLOTS.update(deps.storage, (proposal_id, &info.sender), |bal| match bal {
-        Some(_) => Err(ContractError::AlreadyVoted {}),
-        None => Ok(Ballot {
-            weight: voting_power.amount.u128(),
-            vote,
-        }),
-    })?;
-
     // update vote tally
     prop.votes.add_vote(vote, voting_power.amount.u128());
     prop.update_status(&env.block);
