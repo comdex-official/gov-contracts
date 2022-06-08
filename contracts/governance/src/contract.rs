@@ -220,6 +220,9 @@ pub fn execute_propose(
             ComdexMessages::MsgRemoveWhitelistAppIdVaultInterest{app_mapping_id}=>removewhitelistappidvaultinterest(deps.as_ref(),app_mapping_id,app_id)?,
             ComdexMessages::MsgWhitelistAppIdLiquidation{app_mapping_id}=>whitelistappidliquidation(deps.as_ref(),app_mapping_id,app_id)?,
             ComdexMessages::MsgRemoveWhitelistAppIdLiquidation{app_mapping_id}=>removewhitelistappidliquidation(deps.as_ref(),app_mapping_id,app_id)?,
+            ComdexMessages::MsgAddAuctionParams{app_mapping_id:_,auction_duration_seconds:_,buffer:_,
+                                                cusp:_,step:_,price_function_type:_,surplus_id:_,debt_id:_,
+                                                dutch_id:_}=>()
         }
     }
 

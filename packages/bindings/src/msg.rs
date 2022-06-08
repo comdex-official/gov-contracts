@@ -92,6 +92,18 @@ pub enum ComdexMessages {
         app_mapping_id:u64
 
     },
+    MsgAddAuctionParams{
+        app_mapping_id: u64,
+        auction_duration_seconds:u64,
+        buffer:Decimal,
+        cusp:Decimal,
+        step:u64,
+        price_function_type:u64,
+        surplus_id:u64,
+        debt_id:u64,
+        dutch_id:u64,
+    }
+
 
 }
 
