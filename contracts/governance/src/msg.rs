@@ -40,7 +40,8 @@ pub struct ProposalResponseTotal{
     pub votes: Votes,
     pub proposer : String,
     pub token_denom :String,
-    pub current_deposit:u128
+    pub current_deposit:u128,
+   
  
 }
 // TODO: add some T variants? Maybe good enough as fixed Empty for now

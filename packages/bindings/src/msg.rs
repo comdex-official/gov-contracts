@@ -1,6 +1,6 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::{CosmosMsg,CustomMsg,Decimal};
+use cosmwasm_std::{CosmosMsg,CustomMsg,Decimal,Coin};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
@@ -34,6 +34,7 @@ pub enum ComdexMessages {
         locker_saving_rate :Decimal,
         lot_size :u64,
         bid_factor:Decimal,
+        debt_lot_size:u64
     },
     MsgSetAuctionMappingForApp{
         app_mapping_id : u64,
@@ -102,7 +103,15 @@ pub enum ComdexMessages {
         surplus_id:u64,
         debt_id:u64,
         dutch_id:u64,
+        bid_duration_seconds:u64
+    },
+    MsgBurnToken{
+        app_mapping_id:u64,
+        module :String,
+        amount :Coin,
+        from_address: String
     }
+
 
 
 }

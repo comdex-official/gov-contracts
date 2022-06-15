@@ -10,7 +10,17 @@
       ],
       "properties": {
         "threshold": {
-          "type": "object"
+          "type": "object",
+          "required": [
+            "proposal_id"
+          ],
+          "properties": {
+            "proposal_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
         }
       },
       "additionalProperties": false
@@ -165,20 +175,21 @@
       "additionalProperties": false
     },
     {
-      "description": "Returns VoterInfo",
       "type": "object",
       "required": [
-        "voter"
+        "list_app_proposal"
       ],
       "properties": {
-        "voter": {
+        "list_app_proposal": {
           "type": "object",
           "required": [
-            "address"
+            "app_id"
           ],
           "properties": {
-            "address": {
-              "type": "string"
+            "app_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
             }
           }
         }
@@ -186,28 +197,21 @@
       "additionalProperties": false
     },
     {
-      "description": "Returns VoterListResponse",
       "type": "object",
       "required": [
-        "list_voters"
+        "app_all_up_data"
       ],
       "properties": {
-        "list_voters": {
+        "app_all_up_data": {
           "type": "object",
+          "required": [
+            "app_id"
+          ],
           "properties": {
-            "limit": {
-              "type": [
-                "integer",
-                "null"
-              ],
-              "format": "uint32",
+            "app_id": {
+              "type": "integer",
+              "format": "uint64",
               "minimum": 0.0
-            },
-            "start_after": {
-              "type": [
-                "string",
-                "null"
-              ]
             }
           }
         }

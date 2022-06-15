@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Binary, BlockInfo, Deps, DepsMut, Env, MessageInfo, Order,
-    Response, StdResult,BankMsg,Coin, Uint128,
+    Response, StdResult,BankMsg,Coin, Uint128,Decimal
 };
 use crate::coin_helpers::{ assert_sent_sufficient_coin_deposit};
 use comdex_bindings::ComdexMessages;
@@ -19,7 +19,7 @@ use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg,ProposalResponseTotal};
 use crate::state::{next_id, Ballot, Config, Proposal, Votes,AppGovConfig, BALLOTS, CONFIG, PROPOSALS,PROPOSALSBYAPP,VOTERDEPOSIT,APPPROPOSALS,APPGOVCONFIG};
 use crate::validation::{whitelistassetlockereligible,query_owner_token_at_height,query_app_exists,get_token_supply,query_get_asset_data,
     whitelistassetlockerrewards,whitelistappidvaultinterest,validate_threshold,addextendedpairvault,collectorlookuptable,updatepairvaultstability
-,auctionmappingforapp,updatelockerlsr,removewhitelistassetlocker,removewhitelistappidvaultinterest,whitelistappidliquidation,removewhitelistappidliquidation};
+    ,auctionmappingforapp,updatelockerlsr,removewhitelistassetlocker,removewhitelistappidvaultinterest,whitelistappidliquidation,removewhitelistappidliquidation};
 
 
 // version info for migration info
@@ -34,6 +34,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
 
+    //Only Quorum Threshold allowed for voting
     match msg.threshold {
         Threshold::AbsoluteCount{weight:_}=> return Err(ContractError::AbsoluteCountNotAccepted {}),
         Threshold::AbsolutePercentage{percentage:_}=> return Err(ContractError::AbsolutePercentageNotAccepted {}),
@@ -72,7 +73,6 @@ pub fn execute(
     }
 }
 
-
 pub fn execute_propose(
     deps: DepsMut<ComdexQuery>,
     env: Env,
@@ -97,21 +97,21 @@ pub fn execute_propose(
         return Err(ContractError::NoMessage {});
     }
     
-    //Get App Data for app_id 
+    //get app data for app_id 
     let app_response=query_app_exists(deps.as_ref(),  app_id)?;
-    //if app response exists gov data
     let voting_time=app_response.gov_time_in_seconds;
     let min_gov_deposit=app_response.min_gov_deposit;
     let max_voting_period =Duration::Time(voting_time);
     let gov_token_id=app_response.gov_token_id;
     
-    //Get gov token denom name
+
+    //get gov token denom name
     let gov_token_denom=query_get_asset_data(deps.as_ref(),gov_token_id)?;
     if gov_token_denom=="" || gov_token_id==0 {
         return Err(ContractError::NoGovToken {});
     }
 
-    //Get Total Supply for denom to get proposal weight
+    //get total supply for denom to get proposal weight
     let total_weight=get_token_supply(deps.as_ref(),app_id,gov_token_id)?;
     if total_weight ==0 
     {
@@ -122,9 +122,13 @@ pub fn execute_propose(
     let cfg = CONFIG.load(deps.storage)?;
     let height=env.block.height-1;
 
-    //Calculate Proposer voting Power
+    //Calculate proposer voting Power
 
-    let voting_power=query_owner_token_at_height(deps.as_ref(),info.sender.to_string(),gov_token_denom.to_string(),height.to_string(),cfg.target)?;
+    let voting_power=query_owner_token_at_height(deps.as_ref(),
+                                                info.sender.to_string(),
+                                                gov_token_denom.to_string(),
+                                                height.to_string(),
+                                                cfg.target)?;
 
     // max expires also used as default
     let max_expires = max_voting_period.after(&env.block);
@@ -136,19 +140,16 @@ pub fn execute_propose(
         return Err(ContractError::WrongExpiration {});
     }
 
-    //Check if deposited is more than Min-Deposit
-
-
+   
     //Check if no other deposit provided other than gov token deposit
     let funds_len=info.funds.len();
     
     if funds_len>1{
         return Err(ContractError::AdditionalDenomDeposit {})
     }
+
     //check if gov denom exists in user deposit
-    
-    //check current deposit
-    
+        
     let mut current_deposit:u128=0;
     let mut is_correct_denom=false;
     for user_deposit in &info.funds{
@@ -162,6 +163,8 @@ pub fn execute_propose(
     if !is_correct_denom{
         return Err(ContractError::DenomNotFound {})
     }
+
+    //Handle execution messages
 
     for msg in msgs.clone()
     {
@@ -193,7 +196,8 @@ pub fn execute_propose(
                                                         debt_threshold:_,
                                                         locker_saving_rate:_,
                                                         lot_size:_ ,
-                                                        bid_factor:_} =>collectorlookuptable(deps.as_ref(),app_mapping_id,collector_asset_id,secondary_asset_id,app_id)?,
+                                                        bid_factor:_,
+                                                        debt_lot_size:_} =>collectorlookuptable(deps.as_ref(),app_mapping_id,collector_asset_id,secondary_asset_id,app_id)?,
 
             ComdexMessages::MsgUpdateLsrInPairsVault{app_mapping_id,
                                                      ext_pair_id,
@@ -222,13 +226,18 @@ pub fn execute_propose(
             ComdexMessages::MsgRemoveWhitelistAppIdLiquidation{app_mapping_id}=>removewhitelistappidliquidation(deps.as_ref(),app_mapping_id,app_id)?,
             ComdexMessages::MsgAddAuctionParams{app_mapping_id:_,auction_duration_seconds:_,buffer:_,
                                                 cusp:_,step:_,price_function_type:_,surplus_id:_,debt_id:_,
-                                                dutch_id:_}=>()
+                                                dutch_id:_,bid_duration_seconds:_}=>(),
+            _=>()
+
         }
     }
 
 
+    //check if coins deposited is sufficient to pass minimum deposit 
+    //if minimum deposit is achieved ,propsal status becomes "Open" else it becomes "Pending" 
     let deposit_status=assert_sent_sufficient_coin_deposit(&info.funds,  Some(min_deposit))?;
-    // create a proposal
+
+    // initialize a proposal
     let mut prop = Proposal {
         title,
         description,
@@ -246,21 +255,27 @@ pub fn execute_propose(
         token_denom : gov_token_denom.clone(),
         min_deposit:min_gov_deposit,
         current_deposit:current_deposit,
+        app_mapping_id:app_id,
+        is_slashed:false
     };
     
+  
     
- 
-    let mut app_proposals = match APPPROPOSALS.may_load(deps.storage, app_id)?
-    {
-        Some(record) => record,
-        None => vec![]
-    };
-    
-
+    //update proposal status
     prop.update_status(&env.block);
+
+      //get proposals by app
+      let mut app_proposals = match APPPROPOSALS.may_load(deps.storage, app_id)?
+      {
+          Some(record) => record,
+          None => vec![]
+      };
     
     //get latest proposal id counter
     let id = next_id(deps.storage)?;
+
+    
+    // update proposals
     PROPOSALS.save(deps.storage, id, &prop)?;
     app_proposals.push(crate::state::AppProposalConfig { proposal_id: id, proposal: prop.clone() });
     APPPROPOSALS.save(deps.storage, app_id, &app_proposals)?;
@@ -470,7 +485,7 @@ pub fn execute_refund(
 
     let   prop = PROPOSALS.load(deps.storage, proposal_id)?;
     let status = prop.current_status(&env.block);
-    if [ Status::Pending,Status::Rejected,Status::Open]
+    if [ Status::Pending,Status::Open]
         .iter()
         .any(|x| *x == status)
     {
@@ -480,6 +495,14 @@ pub fn execute_refund(
     if !prop.expires.is_expired(&env.block) {
         return Err(ContractError::NotExpired {});
     
+    }
+
+    //disallow slashed proposal 
+
+    let votes=prop.votes.clone();
+     if status==Status::Rejected && votes.veto>(Decimal::percent(33) *Uint128::from(votes.total())).u128()
+    {
+        return Err(ContractError::NonPassedProposalRefund {});
     }
 
     let deposit_info =  VOTERDEPOSIT.may_load(deps.storage, (proposal_id, &info.sender))?;
@@ -502,6 +525,52 @@ pub fn execute_refund(
         })
         .add_attribute("action", "refund")
         .add_attribute("sender", info.sender)
+        .add_attribute("proposal_id", proposal_id.to_string()))
+}
+
+pub fn execute_slash(
+    deps: DepsMut<ComdexQuery>,
+    env: Env,
+    info: MessageInfo,
+    proposal_id: u64,
+) -> Result<Response<ComdexMessages>, ContractError> {
+
+    let mut  prop = PROPOSALS.load(deps.storage, proposal_id)?;
+    let status = prop.current_status(&env.block);
+    //Check if proposal is rejected
+    if status!=Status::Rejected
+    {
+        return Err(ContractError::NonPassedProposalRefund {});
+    }
+
+    // check if proposal is vetoed
+    let votes=prop.votes.clone();
+     if  votes.veto<(Decimal::percent(33) *Uint128::from(votes.total())).u128()
+    {
+        return Err(ContractError::NonPassedProposalRefund {});
+    }
+
+    if prop.is_slashed
+    {
+        return Err(ContractError::NonPassedProposalRefund {});
+    }
+
+    let deposit_amount=prop.current_deposit.clone();
+    let deposit_denom=prop.token_denom.clone();
+    
+    let slash_amount=Coin{amount:Uint128::from(deposit_amount),
+                        denom:deposit_denom};
+    prop.is_slashed=true;                   
+
+    PROPOSALS.save(deps.storage, proposal_id, &prop)?;
+    
+    Ok(Response::new()
+        .add_message(ComdexMessages::MsgBurnToken{app_mapping_id:prop.app_mapping_id,
+                                                        module:"auction".to_string(),
+                                                        amount:slash_amount,
+                                                        from_address:env.contract.address.to_string()})
+        .add_attribute("action", "Slash")
+        .add_attribute("trigger_address", info.sender)
         .add_attribute("proposal_id", proposal_id.to_string()))
 }
 
@@ -612,8 +681,12 @@ fn get_proposals_by_app(deps: Deps<ComdexQuery>,env:Env,app_id : u64) -> StdResu
 fn get_all_up_info_by_app(deps: Deps<ComdexQuery>,env:Env,app_id : u64) -> StdResult<AppGovConfig> {
     let info= match PROPOSALSBYAPP.may_load(deps.storage,app_id )?{ 
         Some(record) => record,
-        None => vec![]
-};
+        None => vec![]};
+
+    let app_response=query_app_exists(deps,  app_id)?;
+    let gov_token_id=app_response.gov_token_id;
+    let total_weight=get_token_supply(deps,app_id,gov_token_id)?;
+
     let mut participation_info= APPGOVCONFIG.may_load(deps.storage,app_id )?.unwrap();
     let mut total_votes_weight:u128=0;
     for i in info
@@ -621,6 +694,7 @@ fn get_all_up_info_by_app(deps: Deps<ComdexQuery>,env:Env,app_id : u64) -> StdRe
         let proposal=query_proposal_detailed(deps,env.clone(),i)?;
          total_votes_weight=total_votes_weight+proposal.votes.total();
     }
+    participation_info.current_supply=Uint128::from(total_weight).u128();
     participation_info.active_participation_supply=total_votes_weight;
 
 

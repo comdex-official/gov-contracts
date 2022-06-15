@@ -11,11 +11,17 @@
         "propose": {
           "type": "object",
           "required": [
+            "app_id",
             "description",
             "msgs",
             "title"
           ],
           "properties": {
+            "app_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
             "description": {
               "type": "string"
             },
@@ -32,7 +38,7 @@
             "msgs": {
               "type": "array",
               "items": {
-                "$ref": "#/definitions/CosmosMsg_for_ComdexMessages"
+                "$ref": "#/definitions/ComdexMessages"
               }
             },
             "title": {
@@ -94,10 +100,32 @@
     {
       "type": "object",
       "required": [
-        "close"
+        "refund"
       ],
       "properties": {
-        "close": {
+        "refund": {
+          "type": "object",
+          "required": [
+            "proposal_id"
+          ],
+          "properties": {
+            "proposal_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "deposit"
+      ],
+      "properties": {
+        "deposit": {
           "type": "object",
           "required": [
             "proposal_id"
@@ -115,67 +143,6 @@
     }
   ],
   "definitions": {
-    "BankMsg": {
-      "description": "The message types of the bank module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/bank/v1beta1/tx.proto",
-      "oneOf": [
-        {
-          "description": "Sends native tokens from the contract to the given address.\n\nThis is translated to a [MsgSend](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/bank/v1beta1/tx.proto#L19-L28). `from_address` is automatically filled with the current contract's address.",
-          "type": "object",
-          "required": [
-            "send"
-          ],
-          "properties": {
-            "send": {
-              "type": "object",
-              "required": [
-                "amount",
-                "to_address"
-              ],
-              "properties": {
-                "amount": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/Coin"
-                  }
-                },
-                "to_address": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "This will burn the given coins from the contract's account. There is no Cosmos SDK message that performs this, but it can be done by calling the bank keeper. Important if a contract controls significant token supply that must be retired.",
-          "type": "object",
-          "required": [
-            "burn"
-          ],
-          "properties": {
-            "burn": {
-              "type": "object",
-              "required": [
-                "amount"
-              ],
-              "properties": {
-                "amount": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/Coin"
-                  }
-                }
-              }
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
-    },
-    "Binary": {
-      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
-      "type": "string"
-    },
     "Coin": {
       "type": "object",
       "required": [
@@ -195,26 +162,589 @@
       "description": "A number of Custom messages that can call into the Comdex bindings",
       "oneOf": [
         {
-          "description": "Creates a denomination consisting of prefix + contract address + sub-denom. I.e. \"factory/<bech32 address>/<sub-denom>\". Sub_denoms (nonces in Comdex) are validated as part of the full denomination. Can be up to 128 - prefix length (currently 7) - bech32 address length (4 (osmo) + 39) - number of separators (2) = 76 \"alphanumeric\" (https://github.com/cosmos/cosmos-sdk/blob/2646b474c7beb0c93d4fafd395ef345f41afc251/types/coin.go#L677) characters long. Empty sub-denoms are valid. The token will then be prefix + contract address, i.e. \"factory/<bech32 address>/\"",
           "type": "object",
           "required": [
-            "white_list_asset_locker"
+            "msg_white_list_asset_locker"
           ],
           "properties": {
-            "white_list_asset_locker": {
+            "msg_white_list_asset_locker": {
               "type": "object",
               "required": [
-                "app_map_id",
+                "app_mapping_id",
                 "asset_id"
               ],
               "properties": {
-                "app_map_id": {
+                "app_mapping_id": {
                   "type": "integer",
-                  "format": "int32"
+                  "format": "uint64",
+                  "minimum": 0.0
                 },
                 "asset_id": {
                   "type": "integer",
-                  "format": "int32"
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "msg_add_extended_pairs_vault"
+          ],
+          "properties": {
+            "msg_add_extended_pairs_vault": {
+              "type": "object",
+              "required": [
+                "app_mapping_id",
+                "asset_out_oracle_price",
+                "asset_out_price",
+                "closing_fee",
+                "debt_ceiling",
+                "debt_floor",
+                "draw_down_fee",
+                "is_psm_pair",
+                "is_vault_active",
+                "liquidation_penalty",
+                "liquidation_ratio",
+                "min_cr",
+                "min_usd_value_left",
+                "pair_id",
+                "pair_name",
+                "stability_fee"
+              ],
+              "properties": {
+                "app_mapping_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "asset_out_oracle_price": {
+                  "type": "boolean"
+                },
+                "asset_out_price": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "closing_fee": {
+                  "$ref": "#/definitions/Decimal"
+                },
+                "debt_ceiling": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "debt_floor": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "draw_down_fee": {
+                  "$ref": "#/definitions/Decimal"
+                },
+                "is_psm_pair": {
+                  "type": "boolean"
+                },
+                "is_vault_active": {
+                  "type": "boolean"
+                },
+                "liquidation_penalty": {
+                  "$ref": "#/definitions/Decimal"
+                },
+                "liquidation_ratio": {
+                  "$ref": "#/definitions/Decimal"
+                },
+                "min_cr": {
+                  "$ref": "#/definitions/Decimal"
+                },
+                "min_usd_value_left": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "pair_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "pair_name": {
+                  "type": "string"
+                },
+                "stability_fee": {
+                  "$ref": "#/definitions/Decimal"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "msg_set_collector_lookup_table"
+          ],
+          "properties": {
+            "msg_set_collector_lookup_table": {
+              "type": "object",
+              "required": [
+                "app_mapping_id",
+                "bid_factor",
+                "collector_asset_id",
+                "debt_threshold",
+                "locker_saving_rate",
+                "lot_size",
+                "secondary_asset_id",
+                "surplus_threshold"
+              ],
+              "properties": {
+                "app_mapping_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "bid_factor": {
+                  "$ref": "#/definitions/Decimal"
+                },
+                "collector_asset_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "debt_threshold": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "locker_saving_rate": {
+                  "$ref": "#/definitions/Decimal"
+                },
+                "lot_size": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "secondary_asset_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "surplus_threshold": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "msg_set_auction_mapping_for_app"
+          ],
+          "properties": {
+            "msg_set_auction_mapping_for_app": {
+              "type": "object",
+              "required": [
+                "app_mapping_id",
+                "asset_id",
+                "asset_out_oracle_price",
+                "asset_out_price",
+                "is_debt_auction",
+                "is_surplus_auction"
+              ],
+              "properties": {
+                "app_mapping_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "asset_id": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0.0
+                  }
+                },
+                "asset_out_oracle_price": {
+                  "type": "array",
+                  "items": {
+                    "type": "boolean"
+                  }
+                },
+                "asset_out_price": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0.0
+                  }
+                },
+                "is_debt_auction": {
+                  "type": "array",
+                  "items": {
+                    "type": "boolean"
+                  }
+                },
+                "is_surplus_auction": {
+                  "type": "array",
+                  "items": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "msg_whitelist_app_id_vault_interest"
+          ],
+          "properties": {
+            "msg_whitelist_app_id_vault_interest": {
+              "type": "object",
+              "required": [
+                "app_mapping_id"
+              ],
+              "properties": {
+                "app_mapping_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "msg_whitelist_app_id_locker_rewards"
+          ],
+          "properties": {
+            "msg_whitelist_app_id_locker_rewards": {
+              "type": "object",
+              "required": [
+                "app_mapping_id",
+                "asset_id"
+              ],
+              "properties": {
+                "app_mapping_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "asset_id": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0.0
+                  }
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "msg_update_lsr_in_pairs_vault"
+          ],
+          "properties": {
+            "msg_update_lsr_in_pairs_vault": {
+              "type": "object",
+              "required": [
+                "app_mapping_id",
+                "closing_fee",
+                "debt_ceiling",
+                "debt_floor",
+                "draw_down_fee",
+                "ext_pair_id",
+                "liquidation_penalty",
+                "liquidation_ratio",
+                "min_cr",
+                "min_usd_value_left",
+                "stability_fee"
+              ],
+              "properties": {
+                "app_mapping_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "closing_fee": {
+                  "$ref": "#/definitions/Decimal"
+                },
+                "debt_ceiling": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "debt_floor": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "draw_down_fee": {
+                  "$ref": "#/definitions/Decimal"
+                },
+                "ext_pair_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "liquidation_penalty": {
+                  "$ref": "#/definitions/Decimal"
+                },
+                "liquidation_ratio": {
+                  "$ref": "#/definitions/Decimal"
+                },
+                "min_cr": {
+                  "$ref": "#/definitions/Decimal"
+                },
+                "min_usd_value_left": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "stability_fee": {
+                  "$ref": "#/definitions/Decimal"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "msg_update_lsr_in_collector_lookup_table"
+          ],
+          "properties": {
+            "msg_update_lsr_in_collector_lookup_table": {
+              "type": "object",
+              "required": [
+                "app_mapping_id",
+                "asset_id",
+                "lsr"
+              ],
+              "properties": {
+                "app_mapping_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "asset_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "lsr": {
+                  "$ref": "#/definitions/Decimal"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "msg_remove_whitelist_asset_locker"
+          ],
+          "properties": {
+            "msg_remove_whitelist_asset_locker": {
+              "type": "object",
+              "required": [
+                "app_mapping_id",
+                "asset_id"
+              ],
+              "properties": {
+                "app_mapping_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "asset_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "msg_remove_whitelist_app_id_vault_interest"
+          ],
+          "properties": {
+            "msg_remove_whitelist_app_id_vault_interest": {
+              "type": "object",
+              "required": [
+                "app_mapping_id"
+              ],
+              "properties": {
+                "app_mapping_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "msg_whitelist_app_id_liquidation"
+          ],
+          "properties": {
+            "msg_whitelist_app_id_liquidation": {
+              "type": "object",
+              "required": [
+                "app_mapping_id"
+              ],
+              "properties": {
+                "app_mapping_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "msg_remove_whitelist_app_id_liquidation"
+          ],
+          "properties": {
+            "msg_remove_whitelist_app_id_liquidation": {
+              "type": "object",
+              "required": [
+                "app_mapping_id"
+              ],
+              "properties": {
+                "app_mapping_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "msg_add_auction_params"
+          ],
+          "properties": {
+            "msg_add_auction_params": {
+              "type": "object",
+              "required": [
+                "app_mapping_id",
+                "auction_duration_seconds",
+                "buffer",
+                "cusp",
+                "debt_id",
+                "dutch_id",
+                "price_function_type",
+                "step",
+                "surplus_id"
+              ],
+              "properties": {
+                "app_mapping_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "auction_duration_seconds": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "buffer": {
+                  "$ref": "#/definitions/Decimal"
+                },
+                "cusp": {
+                  "$ref": "#/definitions/Decimal"
+                },
+                "debt_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "dutch_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "price_function_type": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "step": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "surplus_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "msg_burn_token"
+          ],
+          "properties": {
+            "msg_burn_token": {
+              "type": "object",
+              "required": [
+                "amount",
+                "app_mapping_id",
+                "from_address",
+                "module"
+              ],
+              "properties": {
+                "amount": {
+                  "$ref": "#/definitions/Coin"
+                },
+                "app_mapping_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "from_address": {
+                  "type": "string"
+                },
+                "module": {
+                  "type": "string"
                 }
               }
             }
@@ -223,118 +753,9 @@
         }
       ]
     },
-    "CosmosMsg_for_ComdexMessages": {
-      "oneOf": [
-        {
-          "type": "object",
-          "required": [
-            "bank"
-          ],
-          "properties": {
-            "bank": {
-              "$ref": "#/definitions/BankMsg"
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "custom"
-          ],
-          "properties": {
-            "custom": {
-              "$ref": "#/definitions/ComdexMessages"
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "staking"
-          ],
-          "properties": {
-            "staking": {
-              "$ref": "#/definitions/StakingMsg"
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "distribution"
-          ],
-          "properties": {
-            "distribution": {
-              "$ref": "#/definitions/DistributionMsg"
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "wasm"
-          ],
-          "properties": {
-            "wasm": {
-              "$ref": "#/definitions/WasmMsg"
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
-    },
-    "DistributionMsg": {
-      "description": "The message types of the distribution module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto",
-      "oneOf": [
-        {
-          "description": "This is translated to a [MsgSetWithdrawAddress](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#L29-L37). `delegator_address` is automatically filled with the current contract's address.",
-          "type": "object",
-          "required": [
-            "set_withdraw_address"
-          ],
-          "properties": {
-            "set_withdraw_address": {
-              "type": "object",
-              "required": [
-                "address"
-              ],
-              "properties": {
-                "address": {
-                  "description": "The `withdraw_address`",
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "This is translated to a [[MsgWithdrawDelegatorReward](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#L42-L50). `delegator_address` is automatically filled with the current contract's address.",
-          "type": "object",
-          "required": [
-            "withdraw_delegator_reward"
-          ],
-          "properties": {
-            "withdraw_delegator_reward": {
-              "type": "object",
-              "required": [
-                "validator"
-              ],
-              "properties": {
-                "validator": {
-                  "description": "The `validator_address`",
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
+    "Decimal": {
+      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+      "type": "string"
     },
     "Expiration": {
       "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
@@ -382,90 +803,6 @@
         }
       ]
     },
-    "StakingMsg": {
-      "description": "The message types of the staking module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto",
-      "oneOf": [
-        {
-          "description": "This is translated to a [MsgDelegate](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto#L81-L90). `delegator_address` is automatically filled with the current contract's address.",
-          "type": "object",
-          "required": [
-            "delegate"
-          ],
-          "properties": {
-            "delegate": {
-              "type": "object",
-              "required": [
-                "amount",
-                "validator"
-              ],
-              "properties": {
-                "amount": {
-                  "$ref": "#/definitions/Coin"
-                },
-                "validator": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "This is translated to a [MsgUndelegate](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto#L112-L121). `delegator_address` is automatically filled with the current contract's address.",
-          "type": "object",
-          "required": [
-            "undelegate"
-          ],
-          "properties": {
-            "undelegate": {
-              "type": "object",
-              "required": [
-                "amount",
-                "validator"
-              ],
-              "properties": {
-                "amount": {
-                  "$ref": "#/definitions/Coin"
-                },
-                "validator": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "This is translated to a [MsgBeginRedelegate](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto#L95-L105). `delegator_address` is automatically filled with the current contract's address.",
-          "type": "object",
-          "required": [
-            "redelegate"
-          ],
-          "properties": {
-            "redelegate": {
-              "type": "object",
-              "required": [
-                "amount",
-                "dst_validator",
-                "src_validator"
-              ],
-              "properties": {
-                "amount": {
-                  "$ref": "#/definitions/Coin"
-                },
-                "dst_validator": {
-                  "type": "string"
-                },
-                "src_validator": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
-    },
     "Timestamp": {
       "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
       "allOf": [
@@ -489,181 +826,6 @@
         "no",
         "abstain",
         "veto"
-      ]
-    },
-    "WasmMsg": {
-      "description": "The message types of the wasm module.\n\nSee https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto",
-      "oneOf": [
-        {
-          "description": "Dispatches a call to another contract at a known address (with known ABI).\n\nThis is translated to a [MsgExecuteContract](https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto#L68-L78). `sender` is automatically filled with the current contract's address.",
-          "type": "object",
-          "required": [
-            "execute"
-          ],
-          "properties": {
-            "execute": {
-              "type": "object",
-              "required": [
-                "contract_addr",
-                "funds",
-                "msg"
-              ],
-              "properties": {
-                "contract_addr": {
-                  "type": "string"
-                },
-                "funds": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/Coin"
-                  }
-                },
-                "msg": {
-                  "description": "msg is the json-encoded ExecuteMsg struct (as raw Binary)",
-                  "allOf": [
-                    {
-                      "$ref": "#/definitions/Binary"
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "Instantiates a new contracts from previously uploaded Wasm code.\n\nThis is translated to a [MsgInstantiateContract](https://github.com/CosmWasm/wasmd/blob/v0.16.0-alpha1/x/wasm/internal/types/tx.proto#L47-L61). `sender` is automatically filled with the current contract's address.",
-          "type": "object",
-          "required": [
-            "instantiate"
-          ],
-          "properties": {
-            "instantiate": {
-              "type": "object",
-              "required": [
-                "code_id",
-                "funds",
-                "label",
-                "msg"
-              ],
-              "properties": {
-                "admin": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "code_id": {
-                  "type": "integer",
-                  "format": "uint64",
-                  "minimum": 0.0
-                },
-                "funds": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/Coin"
-                  }
-                },
-                "label": {
-                  "description": "A human-readbale label for the contract",
-                  "type": "string"
-                },
-                "msg": {
-                  "description": "msg is the JSON-encoded InstantiateMsg struct (as raw Binary)",
-                  "allOf": [
-                    {
-                      "$ref": "#/definitions/Binary"
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "Migrates a given contracts to use new wasm code. Passes a MigrateMsg to allow us to customize behavior.\n\nOnly the contract admin (as defined in wasmd), if any, is able to make this call.\n\nThis is translated to a [MsgMigrateContract](https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto#L86-L96). `sender` is automatically filled with the current contract's address.",
-          "type": "object",
-          "required": [
-            "migrate"
-          ],
-          "properties": {
-            "migrate": {
-              "type": "object",
-              "required": [
-                "contract_addr",
-                "msg",
-                "new_code_id"
-              ],
-              "properties": {
-                "contract_addr": {
-                  "type": "string"
-                },
-                "msg": {
-                  "description": "msg is the json-encoded MigrateMsg struct that will be passed to the new code",
-                  "allOf": [
-                    {
-                      "$ref": "#/definitions/Binary"
-                    }
-                  ]
-                },
-                "new_code_id": {
-                  "description": "the code_id of the new logic to place in the given contract",
-                  "type": "integer",
-                  "format": "uint64",
-                  "minimum": 0.0
-                }
-              }
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "Sets a new admin (for migrate) on the given contract. Fails if this contract is not currently admin of the target contract.",
-          "type": "object",
-          "required": [
-            "update_admin"
-          ],
-          "properties": {
-            "update_admin": {
-              "type": "object",
-              "required": [
-                "admin",
-                "contract_addr"
-              ],
-              "properties": {
-                "admin": {
-                  "type": "string"
-                },
-                "contract_addr": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "Clears the admin on the given contract, so no more migration possible. Fails if this contract is not currently admin of the target contract.",
-          "type": "object",
-          "required": [
-            "clear_admin"
-          ],
-          "properties": {
-            "clear_admin": {
-              "type": "object",
-              "required": [
-                "contract_addr"
-              ],
-              "properties": {
-                "contract_addr": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "additionalProperties": false
-        }
       ]
     }
   }

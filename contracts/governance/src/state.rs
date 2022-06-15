@@ -58,7 +58,9 @@ pub struct Proposal {
     pub proposer : String,
     pub token_denom :String,
     pub min_deposit:u64,
-    pub current_deposit:u128
+    pub current_deposit:u128,
+    pub app_mapping_id:u64,
+    pub is_slashed:bool
 }
 
 impl Proposal {
