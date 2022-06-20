@@ -106,3 +106,5 @@ pub enum QueryMsg {
         app_id: u64,
     }
 }
+
+

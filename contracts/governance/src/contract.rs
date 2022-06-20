@@ -776,3 +776,106 @@ fn list_votes(
     Ok(VoteListResponse { votes })
 }
 
+
+
+#[cfg(test)]
+mod tests {
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::testing::{
+         MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR,
+    };
+    use cosmwasm_std::{coin, from_binary, BankMsg, Decimal,Querier};
+    use cosmwasm_std::{
+        coins, Attribute, ContractResult, CosmosMsg, OwnedDeps, StdError,
+        SystemError, SystemResult,
+    };
+    use cw2::{get_contract_version, ContractVersion};
+    use cw_utils::{Duration, Threshold};
+    use std::marker::PhantomData;
+
+    use crate::msg::Voter;
+
+    use super::*;
+
+    fn mock_env_height(height_delta: u64) -> Env {
+        let mut env = mock_env();
+        env.block.height += height_delta;
+        env
+    }
+
+    fn mock_env_time(time_delta: u64) -> Env {
+        let mut env = mock_env();
+        env.block.time = env.block.time.plus_seconds(time_delta);
+        env
+    }
+
+    const OWNER: &str = "admin0001";
+    const VOTER1: &str = "voter0001";
+    const VOTER2: &str = "voter0002";
+    const VOTER3: &str = "voter0003";
+    const VOTER4: &str = "voter0004";
+    const VOTER5: &str = "voter0005";
+    const NOWEIGHT_VOTER: &str = "voterxxxx";
+    const SOMEBODY: &str = "somebody";
+
+    fn voter<T: Into<String>>(addr: T, weight: u64) -> Voter {
+        Voter {
+            addr: addr.into(),
+            weight,
+        }
+    }
+
+    fn mock_dependencies_with_custom_quierier<Q: Querier>(
+        querier: Q,
+    ) -> OwnedDeps<MockStorage, MockApi, Q, ComdexQuery> {
+        OwnedDeps {
+            storage: MockStorage::default(),
+            api: MockApi::default(),
+            querier,
+            custom_query_type: PhantomData,
+        }
+    }
+
+    pub fn mock_dependencies1() -> OwnedDeps<MockStorage, MockApi, MockQuerier, ComdexQuery> {
+        OwnedDeps {
+            storage: MockStorage::default(),
+            api: MockApi::default(),
+            querier: MockQuerier::default(),
+            custom_query_type: PhantomData,
+        }
+    }
+
+    #[test]
+    fn test_instantiate() {
+        let mut deps = mock_dependencies1();
+        let info = mock_info(OWNER, &[]);
+
+        let instantiate_msg = InstantiateMsg {
+            threshold: Threshold::ThresholdQuorum {
+                threshold: Decimal::percent(50),
+                quorum: Decimal::percent(33),
+            },
+            target:"0.0.0.0090".to_string(),
+        };
+
+        let err = instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            instantiate_msg.clone(),
+        )
+        .unwrap_err();
+
+        let res = instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            instantiate_msg.clone(),
+        ).unwrap();
+        
+        // test if 
+        assert_ne!(err, ContractError::AbsoluteCountNotAccepted {});
+        assert_ne!(err,ContractError::AbsolutePercentageNotAccepted {});
+    }
+
+}
