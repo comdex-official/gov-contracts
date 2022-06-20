@@ -864,18 +864,41 @@ mod tests {
             info.clone(),
             instantiate_msg.clone(),
         )
-        .unwrap_err();
+        
 
-        let res = instantiate(
+//         let res = instantiate(
+//             deps.as_mut(),
+//             mock_env(),
+//             info.clone(),
+//             instantiate_msg.clone(),
+//         ).unwrap();
+        
+        // test if 
+        assert_ne!(err, Err(ContractError::AbsoluteCountNotAccepted {}));
+        assert_ne!(err,Err(ContractError::AbsolutePercentageNotAccepted {}));
+    }
+    
+    #[test]
+    fn test_instantiate2() {
+        let mut deps = mock_dependencies1();
+        let info = mock_info(OWNER, &[]);
+
+        let instantiate_msg = InstantiateMsg {
+            threshold: Threshold::AbsolutePercentage {
+                percentage:Decimal::percent(55),
+            },
+            target:"0.0.0.0090".to_string(),
+        };
+
+        let err = instantiate(
             deps.as_mut(),
             mock_env(),
             info.clone(),
             instantiate_msg.clone(),
-        ).unwrap();
-        
-        // test if 
-        assert_ne!(err, ContractError::AbsoluteCountNotAccepted {});
-        assert_ne!(err,ContractError::AbsolutePercentageNotAccepted {});
+        );
+
+
+        assert_eq!(err,Err(ContractError::AbsolutePercentageNotAccepted {}));
     }
 
 }
