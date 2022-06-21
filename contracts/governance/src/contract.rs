@@ -769,3 +769,4 @@ fn list_votes(
 
     Ok(VoteListResponse { votes })
 }
+
