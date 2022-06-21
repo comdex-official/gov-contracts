@@ -53,7 +53,7 @@ pub enum ComdexMessages {
         app_mapping_id:u64,
         asset_id:Vec<u64>
     },
-    MsgUpdateLsrInPairsVault{
+    MsgUpdatePairsVault{
         app_mapping_id:u64,
         ext_pair_id:u64,
         liquidation_ratio:Decimal,
@@ -67,10 +67,15 @@ pub enum ComdexMessages {
         min_usd_value_left:u64
     }
     ,
-    MsgUpdateLsrInCollectorLookupTable{
+    MsgUpdateCollectorLookupTable{
         app_mapping_id:u64,
         asset_id:u64,
-        lsr:Decimal
+        lsr:Decimal,
+        debt_threshold:u64,
+        surplus_threshold:u64,
+        lot_size:u64,
+        debt_lot_size:u64,
+        bid_factor:Decimal
     }
     ,
     MsgRemoveWhitelistAssetLocker
@@ -105,15 +110,12 @@ pub enum ComdexMessages {
         dutch_id:u64,
         bid_duration_seconds:u64
     },
-    MsgBurnToken{
+    MsgBurnGovTokensForApp{
         app_mapping_id:u64,
-        module :String,
         amount :Coin,
-        from_address: String
+        from: String
     }
-
-
-
+    
 }
 
 impl From<ComdexMessages> for CosmosMsg<ComdexMessages> {

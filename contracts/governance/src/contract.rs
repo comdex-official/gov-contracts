@@ -199,7 +199,7 @@ pub fn execute_propose(
                                                         bid_factor:_,
                                                         debt_lot_size:_} =>collectorlookuptable(deps.as_ref(),app_mapping_id,collector_asset_id,secondary_asset_id,app_id)?,
 
-            ComdexMessages::MsgUpdateLsrInPairsVault{app_mapping_id,
+            ComdexMessages::MsgUpdatePairsVault{app_mapping_id,
                                                      ext_pair_id,
                                                      liquidation_ratio:_,
                                                      stability_fee:_,
@@ -219,7 +219,9 @@ pub fn execute_propose(
                                                         asset_out_oracle_price:_,
                                                         asset_out_price:_} =>auctionmappingforapp(deps.as_ref(),app_mapping_id,app_id)?,
 
-            ComdexMessages::MsgUpdateLsrInCollectorLookupTable{app_mapping_id,asset_id,lsr:_}=>updatelockerlsr(deps.as_ref(),app_mapping_id,asset_id,app_id)?,
+            ComdexMessages::MsgUpdateCollectorLookupTable{app_mapping_id,asset_id,lsr:_,
+                                                         debt_threshold:_,surplus_threshold:_,lot_size:_,
+                                                         debt_lot_size:_,bid_factor:_}=>updatelockerlsr(deps.as_ref(),app_mapping_id,asset_id,app_id)?,
             ComdexMessages::MsgRemoveWhitelistAssetLocker{app_mapping_id,asset_id}=> removewhitelistassetlocker(deps.as_ref(),app_mapping_id,asset_id,app_id)?,   
             ComdexMessages::MsgRemoveWhitelistAppIdVaultInterest{app_mapping_id}=>removewhitelistappidvaultinterest(deps.as_ref(),app_mapping_id,app_id)?,
             ComdexMessages::MsgWhitelistAppIdLiquidation{app_mapping_id}=>whitelistappidliquidation(deps.as_ref(),app_mapping_id,app_id)?,
@@ -331,9 +333,7 @@ pub fn execute_vote(
     if status != Status::Open {
         return Err(ContractError::NotOpen {});
     }
-    if prop.expires.is_expired(&env.block) {
-        return Err(ContractError::Expired {});
-    }
+
 
     //Get Proposal Start Height
     let vote_power_height=prop.start_height-1;
@@ -385,11 +385,6 @@ pub fn execute_execute(
     // that point. If it was approved on time, it can be executed any time.
     if status != Status::Passed {
         return Err(ContractError::WrongExecuteStatus {});
-    }
-
-    //cannot be executed until voting period is expired
-    if !prop.expires.is_expired(&env.block) {
-        return Err(ContractError::NotExpiredYet {});
     }
 
     // set it to executed
@@ -476,6 +471,8 @@ pub fn execute_deposit(
         .add_attribute("sender", info.sender)
         .add_attribute("proposal_id", proposal_id.to_string()))
 }
+
+
 pub fn execute_refund(
     deps: DepsMut<ComdexQuery>,
     env: Env,
@@ -565,10 +562,9 @@ pub fn execute_slash(
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
     
     Ok(Response::new()
-        .add_message(ComdexMessages::MsgBurnToken{app_mapping_id:prop.app_mapping_id,
-                                                        module:"auction".to_string(),
+        .add_message(ComdexMessages::MsgBurnGovTokensForApp{app_mapping_id:prop.app_mapping_id,
                                                         amount:slash_amount,
-                                                        from_address:env.contract.address.to_string()})
+                                                        from:env.contract.address.to_string()})
         .add_attribute("action", "Slash")
         .add_attribute("trigger_address", info.sender)
         .add_attribute("proposal_id", proposal_id.to_string()))
@@ -635,7 +631,6 @@ fn query_proposal_detailed(deps: Deps<ComdexQuery>, env: Env, id: u64) -> StdRes
 }
 
 
-
 // settings for pagination
 const MAX_LIMIT: u32 = 300;
 const DEFAULT_LIMIT: u32 = 10;
@@ -670,7 +665,6 @@ fn get_proposals_by_app(deps: Deps<ComdexQuery>,env:Env,app_id : u64) -> StdResu
         let proposal=query_proposal_detailed(deps,env.clone(),i)?;
         all_proposals.push(proposal);
     }
-
 
     Ok(all_proposals)
 }
@@ -774,108 +768,4 @@ fn list_votes(
         .collect::<StdResult<_>>()?;
 
     Ok(VoteListResponse { votes })
-}
-
-
-
-#[cfg(test)]
-mod tests {
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::testing::{
-         MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR,
-    };
-    use cosmwasm_std::{coin, from_binary, BankMsg, Decimal,Querier};
-    use cosmwasm_std::{
-        coins, Attribute, ContractResult, CosmosMsg, OwnedDeps, StdError,
-        SystemError, SystemResult,
-    };
-    use cw2::{get_contract_version, ContractVersion};
-    use cw_utils::{Duration, Threshold};
-    use std::marker::PhantomData;
-
-    use crate::msg::Voter;
-
-    use super::*;
-
-    fn mock_env_height(height_delta: u64) -> Env {
-        let mut env = mock_env();
-        env.block.height += height_delta;
-        env
-    }
-
-    fn mock_env_time(time_delta: u64) -> Env {
-        let mut env = mock_env();
-        env.block.time = env.block.time.plus_seconds(time_delta);
-        env
-    }
-
-    const OWNER: &str = "admin0001";
-    const VOTER1: &str = "voter0001";
-    const VOTER2: &str = "voter0002";
-    const VOTER3: &str = "voter0003";
-    const VOTER4: &str = "voter0004";
-    const VOTER5: &str = "voter0005";
-    const NOWEIGHT_VOTER: &str = "voterxxxx";
-    const SOMEBODY: &str = "somebody";
-
-    fn voter<T: Into<String>>(addr: T, weight: u64) -> Voter {
-        Voter {
-            addr: addr.into(),
-            weight,
-        }
-    }
-
-    fn mock_dependencies_with_custom_quierier<Q: Querier>(
-        querier: Q,
-    ) -> OwnedDeps<MockStorage, MockApi, Q, ComdexQuery> {
-        OwnedDeps {
-            storage: MockStorage::default(),
-            api: MockApi::default(),
-            querier,
-            custom_query_type: PhantomData,
-        }
-    }
-
-    pub fn mock_dependencies1() -> OwnedDeps<MockStorage, MockApi, MockQuerier, ComdexQuery> {
-        OwnedDeps {
-            storage: MockStorage::default(),
-            api: MockApi::default(),
-            querier: MockQuerier::default(),
-            custom_query_type: PhantomData,
-        }
-    }
-
-    #[test]
-    fn test_instantiate() {
-        let mut deps = mock_dependencies1();
-        let info = mock_info(OWNER, &[]);
-
-        let instantiate_msg = InstantiateMsg {
-            threshold: Threshold::ThresholdQuorum {
-                threshold: Decimal::percent(50),
-                quorum: Decimal::percent(33),
-            },
-            target:"0.0.0.0090".to_string(),
-        };
-
-        let err = instantiate(
-            deps.as_mut(),
-            mock_env(),
-            info.clone(),
-            instantiate_msg.clone(),
-        )
-        .unwrap_err();
-
-        let res = instantiate(
-            deps.as_mut(),
-            mock_env(),
-            info.clone(),
-            instantiate_msg.clone(),
-        ).unwrap();
-        
-        // test if 
-        assert_ne!(err, ContractError::AbsoluteCountNotAccepted {});
-        assert_ne!(err,ContractError::AbsolutePercentageNotAccepted {});
-    }
-
 }

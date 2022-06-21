@@ -117,6 +117,7 @@ pub fn removewhitelistappidvaultinterest(deps:Deps<ComdexQuery>,app_mapping_id:u
     
 }
 
+// Validation check to whitelist an app for liquidation
 pub fn whitelistappidliquidation(deps:Deps<ComdexQuery>,app_mapping_id:u64,
     app_id:u64)
 -> Result< (), ContractError>
@@ -140,6 +141,8 @@ pub fn whitelistappidliquidation(deps:Deps<ComdexQuery>,app_mapping_id:u64,
     }
     
 }
+
+// Validation check to remove whitelisted  app for liquidation
 
 pub fn removewhitelistappidliquidation(deps:Deps<ComdexQuery>,app_mapping_id:u64,
     app_id:u64)
