@@ -1,13 +1,12 @@
 use std::cmp::Ordering;
-use std::ops::Mul;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::{entry_point,to_binary, Binary, BlockInfo, Deps, DepsMut, Env, MessageInfo, Order,
-                   Response, StdResult,BankMsg,Coin, Uint128,Decimal};
+                   Response, StdResult,BankMsg,Coin, Uint128};
 use crate::coin_helpers::{ assert_sent_sufficient_coin_deposit};
 use comdex_bindings::{ComdexQuery,ComdexMessages};
 use cw2::set_contract_version;
 use cw3::{ProposalListResponse, ProposalResponse, Status, Vote, VoteInfo, VoteListResponse, VoteResponse,};
-use cw_storage_plus::{Bound,Map};
+use cw_storage_plus::{Bound};
 use cw_utils::{Expiration, ThresholdResponse,Duration,Threshold};
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg,ProposalResponseTotal};
@@ -545,6 +544,7 @@ pub fn execute_slash(
         return Err(ContractError::ProposalNotVetoed {});
     }
 
+    //check if proposal already slashed
     if prop.is_slashed
     {
         return Err(ContractError::AlreadySlashed {});
@@ -593,9 +593,6 @@ pub fn query(deps: Deps<ComdexQuery>, env: Env, msg: QueryMsg) -> StdResult<Bina
         
     }
 }
-
-
-
 
 fn query_threshold(deps: Deps<ComdexQuery>,proposal_id:u64) -> StdResult<ThresholdResponse> {
     let cfg = CONFIG.load(deps.storage)?;
@@ -766,3 +763,4 @@ fn list_votes(
 
     Ok(VoteListResponse { votes })
 }
+
