@@ -140,6 +140,28 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "slash"
+      ],
+      "properties": {
+        "slash": {
+          "type": "object",
+          "required": [
+            "proposal_id"
+          ],
+          "properties": {
+            "proposal_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
     }
   ],
   "definitions": {
@@ -293,6 +315,7 @@
                 "app_mapping_id",
                 "bid_factor",
                 "collector_asset_id",
+                "debt_lot_size",
                 "debt_threshold",
                 "locker_saving_rate",
                 "lot_size",
@@ -309,6 +332,11 @@
                   "$ref": "#/definitions/Decimal"
                 },
                 "collector_asset_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "debt_lot_size": {
                   "type": "integer",
                   "format": "uint64",
                   "minimum": 0.0
@@ -458,10 +486,10 @@
         {
           "type": "object",
           "required": [
-            "msg_update_lsr_in_pairs_vault"
+            "msg_update_pairs_vault"
           ],
           "properties": {
-            "msg_update_lsr_in_pairs_vault": {
+            "msg_update_pairs_vault": {
               "type": "object",
               "required": [
                 "app_mapping_id",
@@ -528,15 +556,20 @@
         {
           "type": "object",
           "required": [
-            "msg_update_lsr_in_collector_lookup_table"
+            "msg_update_collector_lookup_table"
           ],
           "properties": {
-            "msg_update_lsr_in_collector_lookup_table": {
+            "msg_update_collector_lookup_table": {
               "type": "object",
               "required": [
                 "app_mapping_id",
                 "asset_id",
-                "lsr"
+                "bid_factor",
+                "debt_lot_size",
+                "debt_threshold",
+                "lot_size",
+                "lsr",
+                "surplus_threshold"
               ],
               "properties": {
                 "app_mapping_id": {
@@ -549,8 +582,31 @@
                   "format": "uint64",
                   "minimum": 0.0
                 },
+                "bid_factor": {
+                  "$ref": "#/definitions/Decimal"
+                },
+                "debt_lot_size": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "debt_threshold": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "lot_size": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
                 "lsr": {
                   "$ref": "#/definitions/Decimal"
+                },
+                "surplus_threshold": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
                 }
               }
             }
@@ -662,6 +718,7 @@
               "required": [
                 "app_mapping_id",
                 "auction_duration_seconds",
+                "bid_duration_seconds",
                 "buffer",
                 "cusp",
                 "debt_id",
@@ -677,6 +734,11 @@
                   "minimum": 0.0
                 },
                 "auction_duration_seconds": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "bid_duration_seconds": {
                   "type": "integer",
                   "format": "uint64",
                   "minimum": 0.0
@@ -720,16 +782,15 @@
         {
           "type": "object",
           "required": [
-            "msg_burn_token"
+            "msg_burn_gov_tokens_for_app"
           ],
           "properties": {
-            "msg_burn_token": {
+            "msg_burn_gov_tokens_for_app": {
               "type": "object",
               "required": [
                 "amount",
                 "app_mapping_id",
-                "from_address",
-                "module"
+                "from"
               ],
               "properties": {
                 "amount": {
@@ -740,10 +801,7 @@
                   "format": "uint64",
                   "minimum": 0.0
                 },
-                "from_address": {
-                  "type": "string"
-                },
-                "module": {
+                "from": {
                   "type": "string"
                 }
               }

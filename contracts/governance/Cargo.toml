@@ -15,7 +15,8 @@ library = []
 
 [dependencies]
  cw-utils = { path = "../../packages/utils", version = "0.13.2" }
-cw2 = { path = "../../packages/cw2", version = "0.13.2" }
+ cw2= "0.13.2"
+#cw2 = { path = "../../packages/cw2", version = "0.13.2" }
 cw3 = { path = "../../packages/cw3", version = "0.13.2" }
 
 cw-storage-plus =  "0.13.2" 

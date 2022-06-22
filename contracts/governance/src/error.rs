@@ -5,6 +5,9 @@ use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
+    #[error("Proposal is not eligible")]
+    ProposalNotEligible {},
+
     #[error("{0}")]
     Std(#[from] StdError),
 
@@ -109,4 +112,16 @@ pub enum ContractError {
 
     #[error("Incorrect App ID provided in msg")]
     DifferentAppID {},
+
+    #[error("Proposal is slashed")]
+    SlashedProposal {},
+
+    #[error("Proposal is not vetoed")]
+    ProposalNotVetoed {},
+
+    #[error("Proposal is not rejected")]
+    NotRejected {},
+
+    #[error("Proposal is already slashed")]
+    AlreadySlashed {},
 }

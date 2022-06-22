@@ -70,6 +70,10 @@ pub enum ExecuteMsg {
     Deposit {
         proposal_id: u64,
     }
+    ,
+    Slash {
+        proposal_id: u64,
+    }
 }
 
 // We can also add this as a cw3 extension

@@ -339,11 +339,11 @@ pub fn query_owner_token_at_height(deps: Deps<ComdexQuery>,address:String,denom:
 }
 
 //// check get app date 
-pub fn query_app_exists(deps: Deps<ComdexQuery>,app_mapping_id_1:u64) -> StdResult<GetAppResponse> {
+pub fn query_app_exists(deps: Deps<ComdexQuery>,app_mapping_id:u64) -> StdResult<GetAppResponse> {
     let app_info=deps
     .querier
     .query::<GetAppResponse>(&QueryRequest::Custom(
-        ComdexQuery::GetApp {app_mapping_id: app_mapping_id_1}
+        ComdexQuery::GetApp {app_mapping_id: app_mapping_id}
     ))?;
     
     Ok(app_info)

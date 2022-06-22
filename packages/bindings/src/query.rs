@@ -7,29 +7,31 @@ use cosmwasm_std::{CustomQuery,Coin, Decimal };
 #[serde(rename_all = "snake_case")]
 pub enum ComdexQuery {
     
-
     TotalSupply { app_mapping_id:u64 ,asset_id : u64 },
   
-    State { address: String ,height :String , denom:String,target :String},
+    State { address : String ,
+            height  : String , 
+            denom   : String,
+            target  : String},
 
-    GetApp{app_mapping_id: u64},
+    GetApp{app_mapping_id : u64},
 
-    GetAssetData{asset_id:u64},
+    GetAssetData{asset_id : u64},
 
-    WhiteListedAssetQuery{app_mapping_id:u64 ,asset_id : u64 },
-
+    WhiteListedAssetQuery{app_mapping_id : u64 ,
+                          asset_id : u64 },
     
-    WhitelistAppIdLockerRewards{app_mapping_id :u64, asset_id:Vec<u64>},
+    WhitelistAppIdLockerRewards{app_mapping_id : u64, 
+                                asset_id : Vec<u64>},
     
     WhitelistAppIdVaultInterest{app_mapping_id :u64},
     
-    RemoveWhiteListAsset{app_mapping_id:u64,asset_id:Vec<u64>},
+    RemoveWhiteListAsset{app_mapping_id : u64,
+                         asset_id : Vec<u64>},
 
-    CollectorLookupTableQuery{
-        app_mapping_id:u64,
-        collector_asset_id:u64,
-        secondary_asset_id:u64
-    },
+    CollectorLookupTableQuery{app_mapping_id : u64,
+                              collector_asset_id : u64,
+                              secondary_asset_id : u64},
 
     ExtendedPairsVaultRecordsQuery{
         app_mapping_id :u64,
@@ -42,20 +44,21 @@ pub enum ComdexQuery {
         pair_name:String
     },
     
-
     UpdatePairsVaultQuery{ 
         app_mapping_id:u64,
         ext_pair_id:u64
     },
-
 
     AuctionMappingForAppQuery{app_mapping_id:u64},
 
     UpdateCollectorLookupTableQuery{app_mapping_id:u64,asset_id:u64},
 
     RemoveWhitelistAssetLockerQuery{app_mapping_id:u64,asset_id:u64},
+
     RemoveWhitelistAppIdVaultInterestQuery{app_mapping_id:u64},
+
     WhitelistAppIdLiquidationQuery{app_mapping_id:u64},
+
     RemoveWhitelistAppIdLiquidationQuery{app_mapping_id:u64},
 }
 
@@ -65,15 +68,13 @@ impl CustomQuery for ComdexQuery {}
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct StateResponse {
-    
     pub amount: Coin,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct TotalSupplyResponse {
-    
-   
+
     pub current_supply:u64,
 
 }

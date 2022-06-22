@@ -100,6 +100,9 @@ impl Proposal {
         self.status = self.current_status(block);
     }
 
+    
+
+
     /// Returns true if this proposal is sure to pass (even before expiration, if no future
     /// sequence of possible votes could cause it to fail).
     pub fn is_passed(&self, _block: &BlockInfo) -> bool {
@@ -185,7 +188,40 @@ impl Proposal {
             }
         }
     }
+
+    pub fn check_vetoed(&self, _block: &BlockInfo) -> bool {
+        match self.threshold {
+            Threshold::AbsoluteCount {
+                weight: weight_needed,
+            } => {
+                let weight = self.total_weight - weight_needed;
+                self.votes.no > weight
+            }
+            Threshold::AbsolutePercentage {
+                percentage: percentage_needed,
+            } => {
+                self.votes.no
+                    > votes_needed(
+                        self.total_weight - self.votes.abstain,
+                        Decimal::one() - percentage_needed,
+                    )
+            }
+            Threshold::ThresholdQuorum {
+                threshold:_,
+                quorum,
+            } => {
+                
+                if self.votes.total() > votes_needed(self.total_weight, quorum) && 
+                self.votes.veto> (Decimal::percent(33) *Uint128::from(self.votes.total())).u128() {
+                    return true;
+                }
+                else {return false;}
+            }
+        }
+    }
 }
+
+
 
 // weight of votes for each option
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
@@ -233,7 +269,7 @@ impl Votes {
 
 // this is a helper function so Decimal works with u64 rather than Uint128
 // also, we must *round up* here, as we need 8, not 7 votes to reach 50% of 15 total
-fn votes_needed(weight: u128, percentage: Decimal) -> u128 {
+pub fn votes_needed(weight: u128, percentage: Decimal) -> u128 {
     let applied = percentage * Uint128::new(PRECISION_FACTOR * weight as u128);
     // Divide by PRECISION_FACTOR, rounding up to the nearest integer
     ((applied.u128() + PRECISION_FACTOR - 1) / PRECISION_FACTOR) as u128

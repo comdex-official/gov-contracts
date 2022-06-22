@@ -84,5 +84,19 @@ mod test {
             Ok(()) => {}
             Err(e) => panic!("Unexpected error: {:?}", e),
         };
+
+        let sent_coins = vec![coin(4, "token")];
+        match assert_sent_sufficient_coin_deposit(&sent_coins, Some(coin(5, "token"))) {
+            Ok(Status::Pending) => {},
+            Ok(_) => panic!("Unexpected error: {:?}", "expected Pending"),
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        };
+
+        let sent_coins = vec![coin(8, "token")];
+        match assert_sent_sufficient_coin_deposit(&sent_coins, Some(coin(5, "token"))) {
+            Ok(Status::Open) => {},
+            Ok(_) => panic!("Unexpected error: {:?}", "expected Pending"),
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        };
     }
 }

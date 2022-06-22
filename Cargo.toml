@@ -1,9 +1,6 @@
 [workspace]
 members = ["packages/*", "contracts/*"]
 
-[profile.release.package.cw4-group]
-codegen-units = 1
-incremental = false
 
 [profile.release]
 rpath = false
