@@ -43,7 +43,7 @@ pub enum ComdexQuery {
     },
     
 
-    UpdateLsrInPairsVaultQuery{ 
+    UpdatePairsVaultQuery{ 
         app_mapping_id:u64,
         ext_pair_id:u64
     },
@@ -51,7 +51,7 @@ pub enum ComdexQuery {
 
     AuctionMappingForAppQuery{app_mapping_id:u64},
 
-    UpdateLsrInCollectorLookupTableQuery{app_mapping_id:u64,asset_id:u64},
+    UpdateCollectorLookupTableQuery{app_mapping_id:u64,asset_id:u64},
 
     RemoveWhitelistAssetLockerQuery{app_mapping_id:u64,asset_id:u64},
     RemoveWhitelistAppIdVaultInterestQuery{app_mapping_id:u64},

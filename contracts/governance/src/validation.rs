@@ -30,7 +30,7 @@ pub fn updatepairvaultstability(deps:Deps<ComdexQuery>,app_mapping_id:u64,ext_pa
     {
         return Err(ContractError::DifferentAppID {})
     }
-    let query= ComdexQuery::UpdateLsrInPairsVaultQuery{app_mapping_id :app_mapping_id,ext_pair_id:ext_pair_id};
+    let query= ComdexQuery::UpdatePairsVaultQuery{app_mapping_id :app_mapping_id,ext_pair_id:ext_pair_id};
     let query_result= deps
     .querier
     .query::<MessageValidateResponse>(&QueryRequest::Custom(query))?;
@@ -54,7 +54,7 @@ pub fn updatelockerlsr(deps:Deps<ComdexQuery>,app_mapping_id:u64,asset_id:u64,ap
     {
         return Err(ContractError::DifferentAppID {})
     }
-    let query= ComdexQuery::UpdateLsrInCollectorLookupTableQuery{app_mapping_id :app_mapping_id,asset_id:asset_id};
+    let query= ComdexQuery::UpdateCollectorLookupTableQuery{app_mapping_id :app_mapping_id,asset_id:asset_id};
     let query_result= deps
     .querier
     .query::<MessageValidateResponse>(&QueryRequest::Custom(query))?;
