@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="740ee41d-7d02-4486-bc07-b5d3a5f5825b" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/contracts/governance/src/contract.rs" beforeDir="false" afterPath="$PROJECT_DIR$/contracts/governance/src/contract.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/.rustc_info.json" beforeDir="false" afterPath="$PROJECT_DIR$/target/.rustc_info.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/.fingerprint/governance-422d743383bde349/lib-governance" beforeDir="false" afterPath="$PROJECT_DIR$/target/debug/.fingerprint/governance-422d743383bde349/lib-governance" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/.fingerprint/governance-422d743383bde349/lib-governance.json" beforeDir="false" afterPath="$PROJECT_DIR$/target/debug/.fingerprint/governance-422d743383bde349/lib-governance.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/deps/governance.d" beforeDir="false" afterPath="$PROJECT_DIR$/target/debug/deps/governance.d" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/deps/libgovernance.dylib" beforeDir="false" afterPath="$PROJECT_DIR$/target/debug/deps/libgovernance.dylib" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/deps/libgovernance.rlib" beforeDir="false" afterPath="$PROJECT_DIR$/target/debug/deps/libgovernance.rlib" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/examples/schema" beforeDir="false" afterPath="$PROJECT_DIR$/target/debug/examples/schema" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/examples/schema.d" beforeDir="false" afterPath="$PROJECT_DIR$/target/debug/examples/schema.d" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="MacroExpansionManager">
+    <option name="directoryName" value="tzti1o0b" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectId" id="2Ay27Vut1eHJDCuyuVk03uqqFCE" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "WebServerToolWindowFactoryState": "false",
+    "last_opened_file_path": "/Users/naveen/Desktop/Github/gov-contracts",
+    "nodejs_package_manager_path": "npm",
+    "org.rust.cargo.project.model.PROJECT_DISCOVERY": "true",
+    "settings.editor.selected.configurable": "preferences.pluginManager"
+  }
+}]]></component>
+  <component name="RustProjectSettings">
+    <option name="toolchainHomeDirectory" value="$USER_HOME$/.cargo/bin" />
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="740ee41d-7d02-4486-bc07-b5d3a5f5825b" name="Changes" comment="" />
+      <created>1655967336838</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1655967336838</updated>
+      <workItem from="1655967339454" duration="4048000" />
+      <workItem from="1655972952110" duration="2060000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>

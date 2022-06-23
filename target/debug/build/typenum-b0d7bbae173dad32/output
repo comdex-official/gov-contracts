@@ -1,0 +1,2 @@
+cargo:rustc-env=TYPENUM_BUILD_CONSTS=/Users/naveen/Desktop/Github/gov-contracts/target/debug/build/typenum-b0d7bbae173dad32/out/consts.rs
+cargo:rustc-env=TYPENUM_BUILD_OP=/Users/naveen/Desktop/Github/gov-contracts/target/debug/build/typenum-b0d7bbae173dad32/out/op.rs
