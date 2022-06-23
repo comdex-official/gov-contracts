@@ -1,9 +1,10 @@
 use std::cmp::Ordering;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::{entry_point,to_binary, Binary, BlockInfo, Deps, DepsMut, Env, MessageInfo, Order,
-                   Response, StdResult,BankMsg,Coin, Uint128};
+                   Response, StdResult,BankMsg,Coin, Uint128,Addr};
 use crate::coin_helpers::{ assert_sent_sufficient_coin_deposit};
 use comdex_bindings::{ComdexQuery,ComdexMessages};
+use cw_storage_plus::{Map};
 use cw2::set_contract_version;
 use cw3::{ProposalListResponse, ProposalResponse, Status, Vote, VoteInfo, VoteListResponse, VoteResponse,};
 use cw_storage_plus::{Bound};
@@ -763,4 +764,433 @@ fn list_votes(
 
     Ok(VoteListResponse { votes })
 }
+
+#[cfg(test)]
+mod tests {
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::testing::{
+         MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR,
+    };
+    use cosmwasm_std::{coin, from_binary, BankMsg, Decimal,Querier};
+    use cosmwasm_std::{
+        coins, Attribute, ContractResult, CosmosMsg, OwnedDeps, StdError,
+        SystemError, SystemResult,
+    };
+    use cw2::{get_contract_version, ContractVersion};
+    use cw_utils::{Duration, Threshold};
+    use std::marker::PhantomData;
+
+    use crate::msg::Voter;
+
+    use super::*;
+
+    fn mock_env_height(height_delta: u64) -> Env {
+        let mut env = mock_env();
+        env.block.height += height_delta;
+        env
+    }
+
+    fn mock_env_time(time_delta: u64) -> Env {
+        let mut env = mock_env();
+        env.block.time = env.block.time.plus_seconds(time_delta);
+        env
+    }
+
+    const OWNER: &str = "admin0001";
+    const VOTER1: &str = "voter0001";
+    const VOTER2: &str = "voter0002";
+    const VOTER3: &str = "voter0003";
+    const VOTER4: &str = "voter0004";
+    const VOTER5: &str = "voter0005";
+    const NOWEIGHT_VOTER: &str = "voterxxxx";
+    const SOMEBODY: &str = "somebody";
+
+    fn voter<T: Into<String>>(addr: T, weight: u64) -> Voter {
+        Voter {
+            addr: addr.into(),
+            weight,
+        }
+    }
+    
+     fn setup_test_case(
+        deps: DepsMut<ComdexQuery>,
+        info: MessageInfo,
+        threshold: Threshold,
+        max_voting_period: Duration,
+    ) -> Result<Response, ContractError> {
+        // Instantiate a contract with voters
+        let voters = vec![
+            voter(&info.sender, 1),
+            voter(VOTER1, 1),
+            voter(VOTER2, 2),
+            voter(VOTER3, 3),
+            voter(VOTER4, 4),
+            voter(VOTER5, 5),
+            voter(NOWEIGHT_VOTER, 0),
+        ];
+
+        let instantiate_msg = InstantiateMsg {
+           threshold:Threshold::ThresholdQuorum { threshold: Decimal::percent(50), quorum: Decimal::percent(33)    
+         },
+         target:"setup_test_case".to_string(),
+        };
+        instantiate(deps, mock_env(), info, instantiate_msg)
+    }
+
+    fn mock_dependencies_with_custom_quierier<Q: Querier>(
+        querier: Q,
+    ) -> OwnedDeps<MockStorage, MockApi, Q, ComdexQuery> {
+        OwnedDeps {
+            storage: MockStorage::default(),
+            api: MockApi::default(),
+            querier,
+            custom_query_type: PhantomData,
+        }
+    }
+
+    pub fn mock_dependencies1() -> OwnedDeps<MockStorage, MockApi, MockQuerier, ComdexQuery> {
+        OwnedDeps {
+            storage: MockStorage::default(),
+            api: MockApi::default(),
+            querier: MockQuerier::default(),
+            custom_query_type: PhantomData,
+        }
+    }
+
+    #[test]
+    fn test_instantiate() {
+        let mut deps = mock_dependencies1();
+        let info = mock_info(OWNER, &[]);
+
+        let instantiate_msg = InstantiateMsg {
+            threshold: Threshold::ThresholdQuorum {
+                threshold: Decimal::percent(50),
+                quorum: Decimal::percent(33),
+            },
+            target:"0.0.0.0090".to_string(),
+        };
+
+        let err = instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            instantiate_msg.clone(),
+        );
+        
+        assert_ne!(err, Err(ContractError::AbsoluteCountNotAccepted {}));
+        assert_ne!(err,Err(ContractError::AbsolutePercentageNotAccepted {}));
+    }
+    
+    #[test]
+      fn test_propose(){
+        let mut deps = mock_dependencies1();
+        let mut deps2=mock_dependencies1();
+        let info = mock_info(OWNER, &[]);
+        let mut msgs_com=Vec::new();
+        msgs_com.push(ComdexMessages::MsgWhitelistAppIdVaultInterest{app_mapping_id:33});       
+        msgs_com.push(ComdexMessages::MsgWhitelistAppIdVaultInterest{app_mapping_id:34});
+        let msgs_length=msgs_com.len();
+        let k=execute_propose(deps.as_mut(),mock_env(),info.clone(),"propose".to_string(),"test_propose".to_string(),msgs_com,33,Some(Expiration::Never{}));
+        assert_eq!(k,Err(ContractError::ExtraMessages{}));
+        let msgs_2:Vec<ComdexMessages>=Vec::new();
+        let mut msgs_3=Vec::new();
+        msgs_3.push(ComdexMessages::MsgWhitelistAppIdVaultInterest{app_mapping_id:35});
+         let f=execute_propose(deps.as_mut(),mock_env(),info.clone(),"propose".to_string(),"test_propose".to_string(),msgs_2,33,Some(Expiration::Never{}));
+       assert_eq!(f,Err(ContractError::NoMessage{}));
+    }
+    
+    #[test]
+    fn test_execute(){
+        let mut deps = mock_dependencies1();
+        let info = mock_info(OWNER, &[]);
+        let v1=Vote::Yes;
+        let ts=cosmwasm_std::Timestamp::from_nanos(1_655_745_339);
+        let a = Uint128::from(123u128);
+        pub const PROPOSALS: Map<u64, Proposal> = Map::new("proposals");
+        let id = next_id(&mut deps.storage).unwrap();
+        let mut prop=Proposal{title:"prop".to_string(),
+                                   start_time:ts,
+                                   description:"test prop".to_string(),
+                                   start_height:43,
+                                   expires:Expiration::AtTime(cosmwasm_std::Timestamp::from_nanos(1_655_745_430)),
+                                   msgs:vec![ComdexMessages::MsgWhitelistAppIdVaultInterest{app_mapping_id:33}],
+                                   status:Status::Passed,
+                                   duration:Duration::Time(40),
+                                   threshold: Threshold::ThresholdQuorum {
+                                    threshold: Decimal::percent(50),
+                                    quorum: Decimal::percent(33),
+                                },
+                                total_weight:14,
+                                votes:Votes{yes:32,no:24,abstain:10,veto:3},
+                                deposit:vec![Coin{denom:"vote here".to_string(),amount:a }],
+                                proposer:"validator201".to_string(),
+                                token_denom:"toVote".to_string(),
+                                min_deposit:45,
+                                current_deposit:56,
+                                app_mapping_id:id,
+                                is_slashed:true,
+                            };
+
+    prop.update_status(&mock_env().block);
+    
+    PROPOSALS.save(&mut deps.storage, id, &prop);
+    
+    let err = execute_execute(
+                                                deps.as_mut(),
+                                                 mock_env(), info,
+                                                     id);
+            assert_ne!(err,Err(ContractError:: WrongExecuteStatus {}));
+            assert_ne!(err,Err(ContractError:: NotExpiredYet {}));
+    
+            assert_eq!(err,
+               Ok (Response::new()
+                .add_messages(prop.msgs)
+                .add_attribute("action", "execute")
+                .add_attribute("sender", OWNER)
+                .add_attribute("proposal_id", id.to_string())));
+    }
+    
+ #[test]
+fn test_refund_works(){
+   // let id = next_id(&mut deps.storage).unwrap();
+    let mut deps = mock_dependencies1();
+    let a = Uint128::from(10u128);
+    let info = mock_info(OWNER, &[Coin{denom:"coin".to_string(),amount:a}]);
+    let v1=Vote::Yes;
+    let ts=cosmwasm_std::Timestamp::from_nanos(1_655_794_117);  
+    let id = next_id(&mut deps.storage).unwrap();
+    pub const PROPOSALS: Map<u64, Proposal> = Map::new("proposals");
+    let mut prop=Proposal{title:"prop".to_string(),
+    start_time:ts,
+    description:"test prop".to_string(),
+    start_height:43,
+    expires:Expiration::Never{},
+    msgs:vec![ComdexMessages::MsgWhitelistAppIdVaultInterest{app_mapping_id:33}],
+    status:Status::Pending,
+    duration:Duration::Time(50000000),
+    threshold: Threshold::ThresholdQuorum {
+    threshold: Decimal::percent(50),
+    quorum: Decimal::percent(33),
+    },
+    total_weight:14,
+    votes:Votes{yes:10,no:5,abstain:10,veto:39},
+    deposit:vec![Coin{denom:"vote here".to_string(),amount:a}],
+    proposer:"validator201".to_string(),
+     token_denom:"toVote".to_string(),
+     min_deposit:33,
+    current_deposit:56,
+    app_mapping_id:id,
+    is_slashed:false,
+   };
+
+PROPOSALS.save(&mut deps.storage, id, &prop);
+let mut prop2 = PROPOSALS.load(&mut deps.storage, id).unwrap();
+assert_eq!(prop2.status,Status::Pending);
+let g=execute_refund(deps.as_mut(),mock_env() , info.clone(), id);
+assert_eq!(g,Err(ContractError::NonPassedProposalRefund {}));
+
+prop.status=Status::Rejected;
+PROPOSALS.save(&mut deps.storage, id, &prop);
+let z=execute_refund(deps.as_mut(),mock_env() , info.clone(), id);
+assert_eq!(z,Err(ContractError::SlashedProposal {}));
+
+prop.status=Status::Passed;
+PROPOSALS.save(&mut deps.storage, id, &prop);
+let mut prop3 = PROPOSALS.load(&mut deps.storage, id).unwrap();
+assert_eq!(prop3.status,Status::Passed);
+let votes=prop.votes.clone();
+assert_eq!(39,votes.veto);
+
+prop.status=Status::Rejected;
+prop.expires=Expiration::AtTime(cosmwasm_std::Timestamp::from_nanos(1_655_794_157));
+PROPOSALS.save(&mut deps.storage, id, &prop);
+let mut prop4 = PROPOSALS.load(&mut deps.storage, id).unwrap();
+assert_eq!(prop4.status,Status::Rejected);
+let i=execute_refund(deps.as_mut(),mock_env() , info.clone(), id);
+assert_eq!(i,Err(ContractError:: SlashedProposal{}));
+assert_eq!((Decimal::percent(33) *Uint128::from(votes.total())).u128(),21);
+let votes=prop.votes.clone();
+
+prop.status=Status::Passed;
+PROPOSALS.save(&mut deps.storage, id, &prop);
+pub const VOTERDEPOSIT: Map<(u64, &Addr), Vec<Coin>> = Map::new("voter deposit");
+let deposit_info =  VOTERDEPOSIT.may_load(&mut deps.storage, (id, &info.sender)).unwrap();
+assert_eq!(deposit_info,None);
+let j=execute_refund(deps.as_mut(),mock_env() , info.clone(), id);
+assert_eq!(j,Err(ContractError::NoDeposit {}));
+
+prop.status=Status::Open;
+let a = Uint128::from(123u128);
+let deposit_info1=Some(vec![Coin{denom:"coin".to_string(),amount:a}]).unwrap();
+VOTERDEPOSIT.save(&mut deps.storage, (id, &info.sender), &deposit_info1);
+PROPOSALS.save(&mut deps.storage, id, &prop);
+prop.status=Status::Passed;
+PROPOSALS.save(&mut deps.storage, id, &prop);
+let k=execute_refund(deps.as_mut(),mock_env() , info.clone(), id);
+    assert_eq!(k,Ok(Response::new()
+    .add_message(BankMsg::Send {
+        to_address: info.sender.to_string(),
+        amount:deposit_info1,
+    })
+    .add_attribute("action", "refund")
+    .add_attribute("sender", info.sender)
+    .add_attribute("proposal_id", id.to_string())));
+
+  }
+
+    
+  #[test]
+  fn test_deposit(){
+    let mut deps = mock_dependencies1();
+    let a = Uint128::from(123u128);
+    let info = mock_info(OWNER, &[Coin{denom:"coin".to_string(),amount:a}]);
+    let v1=Vote::Yes;
+    let ts=cosmwasm_std::Timestamp::from_nanos(1_655_745_339);
+    let a = Uint128::from(123u128);
+    pub const PROPOSALS: Map<u64, Proposal> = Map::new("proposals");
+    let id = next_id(&mut deps.storage).unwrap();
+
+    let mut prop=Proposal{title:"prop".to_string(),
+                               start_time:ts,
+                               description:"test prop".to_string(),
+                               start_height:43,
+                               expires:Expiration::AtTime(cosmwasm_std::Timestamp::from_nanos(1_655_745_430)),
+                               msgs:vec![ComdexMessages::MsgWhitelistAppIdVaultInterest{app_mapping_id:33}],
+                               status:Status::Executed,
+                               duration:Duration::Time(40),
+                               threshold: Threshold::ThresholdQuorum {
+                                threshold: Decimal::percent(50),
+                                quorum: Decimal::percent(33),
+                            },
+                            total_weight:14,
+                            votes:Votes{yes:10,no:5,abstain:10,veto:39},
+                            deposit:vec![Coin{denom:"vote here".to_string(),amount:a }],
+                            proposer:"validator201".to_string(),
+                            token_denom:"toVote".to_string(),
+                            min_deposit:45,
+                            current_deposit:56,
+                            app_mapping_id:id,
+                            is_slashed:true,
+                        };
+
+prop.update_status(&mock_env().block);
+// let id = next_id(&mut deps.storage).unwrap();
+PROPOSALS.save(&mut deps.storage, id, &prop);
+let  prop1 = PROPOSALS.load(&mut deps.storage, id);
+VOTERDEPOSIT.save(&mut deps.storage, (id, &info.sender), &info.funds);
+let deposit_info =  VOTERDEPOSIT.may_load(&mut deps.storage, (id, &info.sender)).unwrap();
+let err = execute_deposit(
+    deps.as_mut(),
+    mock_env(),
+    info.clone(),
+    id,
+);  
+assert_eq!(err,Err(ContractError:: CannotDeposit {}));
+// // let id = next_id(&mut deps.storage).unwrap();
+prop.status =Status::Open;
+
+// // prop.update_status(&mock_env().block);
+PROPOSALS.save(&mut deps.storage, id, &prop);
+// // prop.status=Status::Open;
+let a = Uint128::from(123u128);
+pub const VOTERDEPOSIT: Map<(u64, &Addr), Vec<Coin>> = Map::new("voter deposit");
+let deposit_info1=Some(vec![Coin{denom:"coin".to_string(),amount:a}]).unwrap();
+
+VOTERDEPOSIT.save(&mut deps.storage, (id, &info.sender), &deposit_info1);
+PROPOSALS.save(&mut deps.storage, id, &prop);
+//let id = next_id(&mut deps.storage).unwrap();
+// let  prop1 = PROPOSALS.load(&mut deps.storage, id);
+let err = execute_deposit(
+    deps.as_mut(),
+    mock_env(),
+    info.clone(),
+    id,
+    );   
+assert_ne!(err,Err(ContractError:: CannotDeposit {}));
+
+assert_ne!(err,Err(ContractError::IncorrectDenomDeposit {}));
+// assert_eq!(err,Err(ContractError::IncorrectDenomDeposit {}));
+let z = execute_deposit(
+    deps.as_mut(),
+    mock_env(),
+    info.clone(),
+    id,
+);
+assert_eq!(z,Ok(Response::new()
+.add_attribute("action", "deposit")
+.add_attribute("depositor", info.sender)
+.add_attribute("proposal_id", id.to_string())));
+
+}
+
+#[test]
+    fn test_vote(){
+        let mut deps = mock_dependencies1();
+        let a = Uint128::from(123u128);
+        let info = mock_info(OWNER, &[]);
+        let v1=Vote::Yes;
+        let ts=cosmwasm_std::Timestamp::from_nanos(1_655_827_190);
+        pub const PROPOSALS: Map<u64, Proposal> = Map::new("proposals");
+        let id = next_id(&mut deps.storage).unwrap();
+        let mut prop=Proposal{title:"prop".to_string(),
+                                   start_time:ts,
+                                   description:"test prop".to_string(),
+                                   start_height:43,
+                                   expires:Expiration::AtTime(cosmwasm_std::Timestamp::from_nanos(1_655_897_190)),
+                                   msgs:vec![ComdexMessages::MsgWhitelistAppIdVaultInterest{app_mapping_id:id}],
+                                   status:Status::Passed,
+                                   duration:Duration::Time(400000000),
+                                   threshold: Threshold::ThresholdQuorum {
+                                    threshold: Decimal::percent(50),
+                                    quorum: Decimal::percent(33),
+                                },
+                                total_weight:40,
+                                votes:Votes{yes:32,no:24,abstain:10,veto:3},
+                                deposit:vec![Coin{denom:"vote here".to_string(),amount:a }],
+                                proposer:"validator201".to_string(),
+                                token_denom:"toVote".to_string(),
+                                min_deposit:45,
+                                current_deposit:56,
+                                app_mapping_id:id,
+                                is_slashed:false,
+                            };
+    
+    PROPOSALS.save(&mut deps.storage, id, &prop);
+
+    let  prop1 = PROPOSALS.load(&mut deps.storage, id).unwrap();
+    assert_eq!(prop1.current_status(&mock_env().block),Status::Passed);
+    
+    let k = execute_vote(
+        deps.as_mut(),
+        mock_env(),
+        info.clone(),
+        id,
+        Vote::Yes,
+    );  
+    assert_eq!(k,Err(ContractError:: NotOpen {}));
+
+
+
+   prop.status=Status::Open; 
+   prop.expires=Expiration::Never{};
+   PROPOSALS.save(&mut deps.storage, id, &prop);
+   let  prop2 = PROPOSALS.load(&mut deps.storage, id).unwrap();
+   assert_eq!(prop2.expires,Expiration::Never{});
+    let m = execute_vote(
+        deps.as_mut(),
+        mock_env(),
+        info.clone(),
+        id,
+        Vote::Yes, 
+    );               
+    assert_eq!(prop2.status,Status::Open);               
+    assert_eq!(prop2.current_status(&mock_env().block),Status::Open);
+    assert_eq!(false,prop.expires.is_expired(&mock_env().block));
+   assert_eq!(prop2.current_status(&mock_env().block),Status::Open);
+   assert_eq!(prop.current_status(&mock_env().block),Status::Open);
+   assert_eq!(prop.status,Status::Open);
+}
+    
+}
+
 
