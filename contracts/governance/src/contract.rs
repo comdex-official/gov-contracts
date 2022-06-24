@@ -1,10 +1,9 @@
 use std::cmp::Ordering;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::{entry_point,to_binary, Binary, BlockInfo, Deps, DepsMut, Env, MessageInfo, Order,
-                   Response, StdResult,BankMsg,Coin, Uint128,Addr};
+                   Response, StdResult,BankMsg,Coin, Uint128};
 use crate::coin_helpers::{ assert_sent_sufficient_coin_deposit};
 use comdex_bindings::{ComdexQuery,ComdexMessages};
-use cw_storage_plus::{Map};
 use cw2::set_contract_version;
 use cw3::{ProposalListResponse, ProposalResponse, Status, Vote, VoteInfo, VoteListResponse, VoteResponse,};
 use cw_storage_plus::{Bound};
@@ -772,11 +771,12 @@ mod tests {
          MockApi, MockQuerier, MockStorage,
     };
     use cosmwasm_std::{BankMsg, Decimal};
-    use cosmwasm_std::{
+    use cosmwasm_std::{Addr,
         OwnedDeps
     };
     use cw_utils::{Duration, Threshold};
     use std::marker::PhantomData;
+    use cw_storage_plus::{Map};
 
 
     use super::*;
