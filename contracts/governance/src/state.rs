@@ -1,10 +1,12 @@
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use cosmwasm_std::{Addr, BlockInfo, Decimal, StdResult, Storage, Uint128, Coin, Timestamp};
+use std::ops::Mul;
+
+use comdex_bindings::ComdexMessages;
+use cosmwasm_std::{Addr, BlockInfo, Coin, Decimal, StdResult, Storage, Timestamp, Uint128};
 use cw3::{Status, Vote};
 use cw_storage_plus::{Item, Map};
-use cw_utils::{ Expiration, Threshold, Duration};
-use comdex_bindings::ComdexMessages;
+use cw_utils::{Duration, Expiration, Threshold};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 // we multiply by this when calculating needed_votes in order to round up properly
 // Note: `10u128.pow(9)` fails as "u128::pow` is not yet stable as a const fn"
@@ -13,54 +15,49 @@ const PRECISION_FACTOR: u128 = 1_000_000_000;
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct Config {
     pub threshold: Threshold,
-   
-    pub target:String,
-   
+
+    pub target: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct AppGovConfig {
     pub proposal_count: u64,
-   
-    pub current_supply:u128,
 
-    pub active_participation_supply : u128,
-   
+    pub current_supply: u128,
+
+    pub active_participation_supply: u128,
 }
-
-
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct AppProposalConfig {
     pub proposal_id: u64,
-   
-    pub proposal:Proposal,
-   
+
+    pub proposal: Proposal,
 }
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 
 pub struct Proposal {
     pub title: String,
-    pub start_time:Timestamp,
+    pub start_time: Timestamp,
     pub description: String,
     pub start_height: u64,
     pub expires: Expiration,
     pub msgs: Vec<ComdexMessages>,
     pub status: Status,
-    pub duration:Duration,
+    pub duration: Duration,
     /// pass requirements
     pub threshold: Threshold,
     // the total weight when the proposal started (used to calculate percentages)
     pub total_weight: u128,
     // summary of existing votes
     pub votes: Votes,
-    pub deposit :Vec<Coin>,
-    pub proposer : String,
-    pub token_denom :String,
-    pub min_deposit:u64,
-    pub current_deposit:u128,
-    pub app_mapping_id:u64,
-    pub is_slashed:bool
+    pub deposit: Vec<Coin>,
+    pub proposer: String,
+    pub token_denom: String,
+    pub min_deposit: u64,
+    pub current_deposit: u128,
+    pub app_mapping_id: u64,
+    pub is_slashed: bool,
 }
 
 impl Proposal {
@@ -69,27 +66,15 @@ impl Proposal {
     pub fn current_status(&self, block: &BlockInfo) -> Status {
         let mut status = self.status;
 
-        if status == Status::Executed
-        {
+        if status == Status::Executed {
             status = Status::Executed;
-        }
-
-      
-        else if status == Status::Pending  && self.expires.is_expired(block)
-            {
+        } else if status == Status::Pending && self.expires.is_expired(block) {
             status = Status::Rejected;
-            }
-
-        else if self.expires.is_expired(block) && self.is_passed(block)
-        {
+        } else if self.expires.is_expired(block) && self.is_passed(block) {
             status = Status::Passed;
-        }
-
-        else if self.expires.is_expired(block) && self.is_rejected(block)
-        {
+        } else if self.expires.is_expired(block) && self.is_rejected(block) {
             status = Status::Rejected;
         }
-
 
         status
     }
@@ -99,9 +84,6 @@ impl Proposal {
     pub fn update_status(&mut self, block: &BlockInfo) {
         self.status = self.current_status(block);
     }
-
-    
-
 
     /// Returns true if this proposal is sure to pass (even before expiration, if no future
     /// sequence of possible votes could cause it to fail).
@@ -119,20 +101,18 @@ impl Proposal {
             Threshold::ThresholdQuorum { threshold, quorum } => {
                 // we always require the quorum
                 if self.votes.total() < votes_needed(self.total_weight, quorum) {
-                    return false;
-                }
-
-                else if self.votes.veto> (Decimal::percent(33) *Uint128::from(self.votes.total())).u128() {
-                    return false;
-                }
-                else if self.votes.total() == self.votes.abstain {
-                    return false;
-                }
-                else {
+                    false
+                } else if self.votes.veto
+                    > (Decimal::percent(33) * Uint128::from(self.votes.total())).u128()
+                {
+                    false
+                } else if self.votes.total() == self.votes.abstain {
+                    false
+                } else {
                     // If expired, we compare vote_count against the total number of votes (minus abstain).
                     let opinions = self.votes.total() - self.votes.abstain;
                     self.votes.yes >= votes_needed(opinions, threshold)
-                } 
+                }
             }
         }
     }
@@ -154,33 +134,24 @@ impl Proposal {
                         Decimal::one() - percentage_needed,
                     )
             }
-            Threshold::ThresholdQuorum {
-                threshold,
-                quorum,
-            } => {
+            Threshold::ThresholdQuorum { threshold, quorum } => {
                 let opinions = self.votes.total() - self.votes.abstain;
 
-
                 if self.votes.total() < votes_needed(self.total_weight, quorum) {
-                    return true;
-                }
-                else if self.expires.is_expired(block) {
+                    true
+                } else if self.expires.is_expired(block) {
                     // If expired, we compare vote_count against the total number of votes (minus abstain).
                     let opinions = self.votes.total() - self.votes.abstain;
-                    return self.votes.no > votes_needed(opinions, Decimal::one() - threshold);
-                } 
-
-                else if self.votes.veto> (Decimal::percent(33) *Uint128::from(self.votes.total())).u128() {
-                    return true;
-                }
-                else if self.votes.total() == self.votes.abstain {
-                    return true;
-                }
-                else if self.votes.yes <= votes_needed(opinions, threshold)
+                    self.votes.no > votes_needed(opinions, Decimal::one() - threshold)
+                } else if self.votes.veto
+                    > (Decimal::percent(33) * Uint128::from(self.votes.total())).u128()
                 {
-                    return true;
-                }
-                else {
+                    true
+                } else if self.votes.total() == self.votes.abstain {
+                    true
+                } else if self.votes.yes <= votes_needed(opinions, threshold) {
+                    true
+                } else {
                     // If not expired, we must assume all non-votes will be cast for
                     let possible_opinions = self.total_weight - self.votes.abstain;
                     self.votes.no > votes_needed(possible_opinions, Decimal::one() - threshold)
@@ -207,21 +178,16 @@ impl Proposal {
                     )
             }
             Threshold::ThresholdQuorum {
-                threshold:_,
+                threshold: _,
                 quorum,
             } => {
-                
-                if self.votes.total() > votes_needed(self.total_weight, quorum) && 
-                self.votes.veto> (Decimal::percent(33) *Uint128::from(self.votes.total())).u128() {
-                    return true;
-                }
-                else {return false;}
+                self.votes.total() > votes_needed(self.total_weight, quorum)
+                    && self.votes.veto 
+                        > (Decimal::percent(33).mul(Uint128::from(self.votes.total()))).u128()
             }
         }
     }
 }
-
-
 
 // weight of votes for each option
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
@@ -289,7 +255,6 @@ pub struct VoteWeight {
     pub no: u128,
     pub abstain: u128,
     pub veto: u128,
-
 }
 
 // unique items
@@ -301,14 +266,11 @@ pub const BALLOTS: Map<(u64, &Addr), Ballot> = Map::new("votes");
 pub const PROPOSALSBYAPP: Map<u64, Vec<u64>> = Map::new("ProposalsByApp");
 pub const PROPOSALS: Map<u64, Proposal> = Map::new("proposals");
 pub const VOTERDEPOSIT: Map<(u64, &Addr), Vec<Coin>> = Map::new("voter deposit");
-pub const APPPROPOSALS: Map<u64,Vec<AppProposalConfig>> = Map::new("proposals-by-app");
-pub const APPGOVCONFIG: Map<u64,AppGovConfig> = Map::new("app_gov_config");
-
-
+pub const APPPROPOSALS: Map<u64, Vec<AppProposalConfig>> = Map::new("proposals-by-app");
+pub const APPGOVCONFIG: Map<u64, AppGovConfig> = Map::new("app_gov_config");
 
 pub fn next_id(store: &mut dyn Storage) -> StdResult<u64> {
     let id: u64 = PROPOSAL_COUNT.may_load(store)?.unwrap_or_default() + 1;
     PROPOSAL_COUNT.save(store, &id)?;
     Ok(id)
 }
-

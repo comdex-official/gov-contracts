@@ -20,7 +20,6 @@ pub enum ContractError {
     #[error("Additional denom deposit detected")]
     AdditionalDenomDeposit {},
 
-
     #[error("Not possible to reach required (passing) weight")]
     UnreachableWeight {},
 
@@ -43,11 +42,11 @@ pub enum ContractError {
     NonPassedProposalRefund {},
 
     #[error("No deposit record found for proposal")]
-    NoDeposit{},
+    NoDeposit {},
 
     #[error("Insufficient funds sent")]
     InsufficientFundsSend {},
-    
+
     #[error("Unauthorized")]
     Unauthorized {},
 
@@ -77,13 +76,13 @@ pub enum ContractError {
 
     #[error("Invalid threshold")]
     InvalidThreshold {},
-    
+
     #[error("Required quorum threshold cannot be zero")]
     ZeroQuorumThreshold {},
 
     #[error("Not possible to reach required quorum threshold")]
     UnreachableQuorumThreshold {},
-    
+
     #[error("Wrong expiration option")]
     WrongExpiration {},
 
@@ -99,16 +98,14 @@ pub enum ContractError {
     #[error("IncorrectDenomDeposit")]
     IncorrectDenomDeposit {},
 
-
     #[error("Proposal must be open or pending to deposit")]
     CannotDeposit {},
-
 
     #[error("Total Gov Token Supply is 0")]
     ZeroSupply {},
 
     #[error("Proposal Msg Error ( {err:?}")]
-    ProposalError{err:String},
+    ProposalError { err: String },
 
     #[error("Incorrect App ID provided in msg")]
     DifferentAppID {},

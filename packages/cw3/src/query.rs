@@ -1,7 +1,6 @@
+use comdex_bindings::ComdexMessages;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use comdex_bindings::ComdexMessages;
-
 use cw_utils::{Expiration, ThresholdResponse};
 
 use crate::msg::Vote;
@@ -52,9 +51,7 @@ pub enum Cw3QueryMsg {
 /// the querier needs to know what possible custom message types
 /// those are in order to parse the response
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-pub struct ProposalResponse
-
-{
+pub struct ProposalResponse {
     pub id: u64,
     pub title: String,
     pub description: String,

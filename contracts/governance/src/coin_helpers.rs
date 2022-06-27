@@ -1,8 +1,6 @@
 use crate::error::ContractError;
 use cosmwasm_std::Coin;
-use cw3::{
-     Status, 
-    };
+use cw3::Status;
 pub fn assert_sent_sufficient_coin_deposit(
     sent: &[Coin],
     required: Option<Coin>,
@@ -49,7 +47,6 @@ pub fn assert_sent_sufficient_coin(
     Ok(())
 }
 
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -87,14 +84,14 @@ mod test {
 
         let sent_coins = vec![coin(4, "token")];
         match assert_sent_sufficient_coin_deposit(&sent_coins, Some(coin(5, "token"))) {
-            Ok(Status::Pending) => {},
+            Ok(Status::Pending) => {}
             Ok(_) => panic!("Unexpected error: {:?}", "expected Pending"),
             Err(e) => panic!("Unexpected error: {:?}", e),
         };
 
         let sent_coins = vec![coin(8, "token")];
         match assert_sent_sufficient_coin_deposit(&sent_coins, Some(coin(5, "token"))) {
-            Ok(Status::Open) => {},
+            Ok(Status::Open) => {}
             Ok(_) => panic!("Unexpected error: {:?}", "expected Pending"),
             Err(e) => panic!("Unexpected error: {:?}", e),
         };
