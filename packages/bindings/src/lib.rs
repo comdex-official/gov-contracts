@@ -7,7 +7,6 @@ pub use query::{
     TotalSupplyResponse,
 };
 
-
 // This is a signal, such that any contract that imports these helpers will only run on the
 // comdex blockchain
 #[no_mangle]

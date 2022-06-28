@@ -1,0 +1,27 @@
+cargo:rerun-if-changed=src/trap/handlers.c
+TARGET = Some("aarch64-apple-darwin")
+OPT_LEVEL = Some("0")
+HOST = Some("aarch64-apple-darwin")
+CC_aarch64-apple-darwin = None
+CC_aarch64_apple_darwin = None
+HOST_CC = None
+CC = None
+CFLAGS_aarch64-apple-darwin = None
+CFLAGS_aarch64_apple_darwin = None
+HOST_CFLAGS = None
+CFLAGS = None
+CRATE_CC_NO_DEFAULTS = None
+DEBUG = Some("true")
+CARGO_CFG_TARGET_FEATURE = None
+running: "cc" "-O0" "-ffunction-sections" "-fdata-sections" "-fPIC" "-g" "-fno-omit-frame-pointer" "-arch" "arm64" "-Wall" "-Wextra" "-DCFG_TARGET_OS_MACOS" "-o" "/Users/subham/gov-contracts/target/debug/build/wasmer-vm-143d98889fc17318/out/src/trap/handlers.o" "-c" "src/trap/handlers.c"
+exit status: 0
+AR_aarch64-apple-darwin = None
+AR_aarch64_apple_darwin = None
+HOST_AR = None
+AR = None
+running: "ar" "cq" "/Users/subham/gov-contracts/target/debug/build/wasmer-vm-143d98889fc17318/out/libhandlers.a" "/Users/subham/gov-contracts/target/debug/build/wasmer-vm-143d98889fc17318/out/src/trap/handlers.o"
+exit status: 0
+running: "ar" "s" "/Users/subham/gov-contracts/target/debug/build/wasmer-vm-143d98889fc17318/out/libhandlers.a"
+exit status: 0
+cargo:rustc-link-lib=static=handlers
+cargo:rustc-link-search=native=/Users/subham/gov-contracts/target/debug/build/wasmer-vm-143d98889fc17318/out

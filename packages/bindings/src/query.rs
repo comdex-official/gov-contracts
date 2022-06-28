@@ -5,13 +5,13 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum ComdexQuery {
-    TotalSupply { 
+    TotalSupply {
         app_mapping_id: u64,
-        asset_id: u64, 
+        asset_id: u64,
     },
-    State { 
+    State {
         address: String,
-        height: String, 
+        height: String,
         denom: String,
         target: String,
     },
@@ -23,10 +23,10 @@ pub enum ComdexQuery {
     },
     WhiteListedAssetQuery {
         app_mapping_id: u64,
-        asset_id: u64, 
+        asset_id: u64,
     },
     WhitelistAppIdLockerRewards {
-        app_mapping_id: u64, 
+        app_mapping_id: u64,
         asset_id: Vec<u64>,
     },
     WhitelistAppIdVaultInterest {
@@ -51,7 +51,7 @@ pub enum ComdexQuery {
         debt_floor: u64,
         pair_name: String,
     },
-    UpdatePairsVaultQuery { 
+    UpdatePairsVaultQuery {
         app_mapping_id: u64,
         ext_pair_id: u64,
     },
@@ -79,7 +79,6 @@ pub enum ComdexQuery {
 
 impl CustomQuery for ComdexQuery {}
 
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct StateResponse {
@@ -99,8 +98,6 @@ pub struct GetAppResponse {
     pub gov_time_in_seconds: u64,
     pub gov_token_id: u64,
 }
-
-
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]

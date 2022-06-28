@@ -355,7 +355,7 @@ pub fn query_owner_token_at_height(
 
 //// check get app date
 pub fn query_app_exists(
-    deps: Deps<ComdexQuery>, 
+    deps: Deps<ComdexQuery>,
     app_mapping_id_param: u64,
 ) -> StdResult<GetAppResponse> {
     let app_info =
@@ -380,8 +380,8 @@ pub fn query_get_asset_data(deps: Deps<ComdexQuery>, asset_id_param: u64) -> Std
 
 /// get token_supply of an asset at current height
 pub fn get_token_supply(
-    deps: Deps<ComdexQuery>, 
-    app_id_param: u64, 
+    deps: Deps<ComdexQuery>,
+    app_id_param: u64,
     asset_id_param: u64,
 ) -> StdResult<u64> {
     let total_token_supply = deps

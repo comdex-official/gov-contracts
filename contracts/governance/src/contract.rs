@@ -190,7 +190,6 @@ pub fn execute_propose(
             ComdexMessages::MsgAddExtendedPairsVault {
                 app_mapping_id,
                 pair_id,
-                liquidation_ratio: _,
                 stability_fee,
                 closing_fee,
                 liquidation_penalty: _,
@@ -198,7 +197,7 @@ pub fn execute_propose(
                 is_vault_active: _,
                 debt_ceiling,
                 debt_floor,
-                is_psm_pair: _,
+                is_stable_mint_vault: _,
                 min_cr: _,
                 pair_name,
                 asset_out_oracle_price: _,
@@ -237,7 +236,6 @@ pub fn execute_propose(
             ComdexMessages::MsgUpdatePairsVault {
                 app_mapping_id,
                 ext_pair_id,
-                liquidation_ratio: _,
                 stability_fee: _,
                 closing_fee: _,
                 liquidation_penalty: _,
@@ -422,7 +420,6 @@ pub fn execute_vote(
     //check previous vote (if any) in order to change previous vote weights
     let previous_vote = BALLOTS.may_load(deps.storage, (proposal_id, &info.sender))?;
 
-    
     if let Some(..) = previous_vote {
         let prev_vote = previous_vote.unwrap();
         prop.votes

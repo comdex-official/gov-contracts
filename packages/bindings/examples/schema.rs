@@ -12,5 +12,4 @@ fn main() {
     remove_schemas(&out_dir).unwrap();
 
     export_schema(&schema_for!(ComdexMessages), &out_dir);
-    
 }

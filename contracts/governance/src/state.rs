@@ -100,13 +100,11 @@ impl Proposal {
             }
             Threshold::ThresholdQuorum { threshold, quorum } => {
                 // we always require the quorum
-                if self.votes.total() < votes_needed(self.total_weight, quorum) {
-                    false
-                } else if self.votes.veto
-                    > (Decimal::percent(33) * Uint128::from(self.votes.total())).u128()
+                if self.votes.total() < votes_needed(self.total_weight, quorum)
+                    || self.votes.total() == self.votes.abstain
+                    || self.votes.veto
+                        > (Decimal::percent(33) * Uint128::from(self.votes.total())).u128()
                 {
-                    false
-                } else if self.votes.total() == self.votes.abstain {
                     false
                 } else {
                     // If expired, we compare vote_count against the total number of votes (minus abstain).
@@ -137,20 +135,17 @@ impl Proposal {
             Threshold::ThresholdQuorum { threshold, quorum } => {
                 let opinions = self.votes.total() - self.votes.abstain;
 
-                if self.votes.total() < votes_needed(self.total_weight, quorum) {
+                if self.votes.total() < votes_needed(self.total_weight, quorum)
+                    || self.votes.total() == self.votes.abstain
+                    || self.votes.veto
+                        > (Decimal::percent(33) * Uint128::from(self.votes.total())).u128()
+                    || self.votes.yes <= votes_needed(opinions, threshold)
+                {
                     true
                 } else if self.expires.is_expired(block) {
                     // If expired, we compare vote_count against the total number of votes (minus abstain).
                     let opinions = self.votes.total() - self.votes.abstain;
                     self.votes.no > votes_needed(opinions, Decimal::one() - threshold)
-                } else if self.votes.veto
-                    > (Decimal::percent(33) * Uint128::from(self.votes.total())).u128()
-                {
-                    true
-                } else if self.votes.total() == self.votes.abstain {
-                    true
-                } else if self.votes.yes <= votes_needed(opinions, threshold) {
-                    true
                 } else {
                     // If not expired, we must assume all non-votes will be cast for
                     let possible_opinions = self.total_weight - self.votes.abstain;
@@ -182,7 +177,7 @@ impl Proposal {
                 quorum,
             } => {
                 self.votes.total() > votes_needed(self.total_weight, quorum)
-                    && self.votes.veto 
+                    && self.votes.veto
                         > (Decimal::percent(33).mul(Uint128::from(self.votes.total()))).u128()
             }
         }

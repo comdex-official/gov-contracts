@@ -1,19 +1,18 @@
+use cosmwasm_std::{Coin, CosmosMsg, CustomMsg, Decimal};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::{Coin, CosmosMsg, CustomMsg, Decimal};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
 /// A number of Custom messages that can call into the Comdex bindings
 pub enum ComdexMessages {
-    MsgWhiteListAssetLocker { 
-        app_mapping_id: u64, 
+    MsgWhiteListAssetLocker {
+        app_mapping_id: u64,
         asset_id: u64,
     },
     MsgAddExtendedPairsVault {
         app_mapping_id: u64,
         pair_id: u64,
-        liquidation_ratio: Decimal,
         stability_fee: Decimal,
         closing_fee: Decimal,
         liquidation_penalty: Decimal,
@@ -21,7 +20,7 @@ pub enum ComdexMessages {
         is_vault_active: bool,
         debt_ceiling: u64,
         debt_floor: u64,
-        is_psm_pair: bool,
+        is_stable_mint_vault: bool,
         min_cr: Decimal,
         pair_name: String,
         asset_out_oracle_price: bool,
@@ -57,7 +56,6 @@ pub enum ComdexMessages {
     MsgUpdatePairsVault {
         app_mapping_id: u64,
         ext_pair_id: u64,
-        liquidation_ratio: Decimal,
         stability_fee: Decimal,
         closing_fee: Decimal,
         liquidation_penalty: Decimal,
@@ -107,7 +105,6 @@ pub enum ComdexMessages {
         amount: Coin,
         from: String,
     },
-    
 }
 
 impl From<ComdexMessages> for CosmosMsg<ComdexMessages> {
