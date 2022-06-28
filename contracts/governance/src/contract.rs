@@ -6,11 +6,11 @@ use crate::state::{
     CONFIG, PROPOSALS, PROPOSALSBYAPP, VOTERDEPOSIT,
 };
 use crate::validation::{
-    addextendedpairvault, auctionmappingforapp, collectorlookuptable, get_token_supply,
+    add_extended_pair_vault, auction_mapping_for_app, collector_lookup_table, get_token_supply,
     query_app_exists, query_get_asset_data, query_owner_token_at_height,
-    removewhitelistappidliquidation, removewhitelistappidvaultinterest, removewhitelistassetlocker,
-    updatelockerlsr, updatepairvaultstability, validate_threshold, whitelistappidliquidation,
-    whitelistappidvaultinterest, whitelistassetlockereligible, whitelistassetlockerrewards,
+    remove_whitelist_app_id_liquidation, remove_whitelist_app_id_vault_interest, remove_whitelist_asset_locker,
+    update_locker_lsr, update_pairvault_stability, validate_threshold, whitelist_app_id_liquidation,
+    whitelist_app_id_vault_interest, whitelist_asset_locker_eligible, whitelist_asset_locker_rewards,
 };
 use comdex_bindings::{ComdexMessages, ComdexQuery};
 #[cfg(not(feature = "library"))]
@@ -179,13 +179,13 @@ pub fn execute_propose(
             ComdexMessages::MsgWhiteListAssetLocker {
                 app_mapping_id,
                 asset_id,
-            } => whitelistassetlockereligible(deps.as_ref(), app_mapping_id, asset_id, app_id)?,
+            } => whitelist_asset_locker_eligible(deps.as_ref(), app_mapping_id, asset_id, app_id)?,
             ComdexMessages::MsgWhitelistAppIdLockerRewards {
                 app_mapping_id,
                 asset_id,
-            } => whitelistassetlockerrewards(deps.as_ref(), app_mapping_id, asset_id, app_id)?,
+            } => whitelist_asset_locker_rewards(deps.as_ref(), app_mapping_id, asset_id, app_id)?,
             ComdexMessages::MsgWhitelistAppIdVaultInterest { app_mapping_id } => {
-                whitelistappidvaultinterest(deps.as_ref(), app_mapping_id, app_id)?
+                whitelist_app_id_vault_interest(deps.as_ref(), app_mapping_id, app_id)?
             }
             ComdexMessages::MsgAddExtendedPairsVault {
                 app_mapping_id,
@@ -203,7 +203,7 @@ pub fn execute_propose(
                 asset_out_oracle_price: _,
                 asset_out_price: _,
                 min_usd_value_left: _,
-            } => addextendedpairvault(
+            } => add_extended_pair_vault(
                 deps.as_ref(),
                 app_mapping_id,
                 pair_id,
@@ -225,7 +225,7 @@ pub fn execute_propose(
                 lot_size: _,
                 bid_factor: _,
                 debt_lot_size: _,
-            } => collectorlookuptable(
+            } => collector_lookup_table(
                 deps.as_ref(),
                 app_mapping_id,
                 collector_asset_id,
@@ -244,7 +244,7 @@ pub fn execute_propose(
                 debt_ceiling: _,
                 debt_floor: _,
                 min_usd_value_left: _,
-            } => updatepairvaultstability(deps.as_ref(), app_mapping_id, ext_pair_id, app_id)?,
+            } => update_pairvault_stability(deps.as_ref(), app_mapping_id, ext_pair_id, app_id)?,
 
             ComdexMessages::MsgSetAuctionMappingForApp {
                 app_mapping_id,
@@ -253,7 +253,7 @@ pub fn execute_propose(
                 is_debt_auction: _,
                 asset_out_oracle_price: _,
                 asset_out_price: _,
-            } => auctionmappingforapp(deps.as_ref(), app_mapping_id, app_id)?,
+            } => auction_mapping_for_app(deps.as_ref(), app_mapping_id, app_id)?,
 
             ComdexMessages::MsgUpdateCollectorLookupTable {
                 app_mapping_id,
@@ -264,19 +264,19 @@ pub fn execute_propose(
                 lot_size: _,
                 debt_lot_size: _,
                 bid_factor: _,
-            } => updatelockerlsr(deps.as_ref(), app_mapping_id, asset_id, app_id)?,
+            } => update_locker_lsr(deps.as_ref(), app_mapping_id, asset_id, app_id)?,
             ComdexMessages::MsgRemoveWhitelistAssetLocker {
                 app_mapping_id,
                 asset_id,
-            } => removewhitelistassetlocker(deps.as_ref(), app_mapping_id, asset_id, app_id)?,
+            } => remove_whitelist_asset_locker(deps.as_ref(), app_mapping_id, asset_id, app_id)?,
             ComdexMessages::MsgRemoveWhitelistAppIdVaultInterest { app_mapping_id } => {
-                removewhitelistappidvaultinterest(deps.as_ref(), app_mapping_id, app_id)?
+                remove_whitelist_app_id_vault_interest(deps.as_ref(), app_mapping_id, app_id)?
             }
             ComdexMessages::MsgWhitelistAppIdLiquidation { app_mapping_id } => {
-                whitelistappidliquidation(deps.as_ref(), app_mapping_id, app_id)?
+                whitelist_app_id_liquidation(deps.as_ref(), app_mapping_id, app_id)?
             }
             ComdexMessages::MsgRemoveWhitelistAppIdLiquidation { app_mapping_id } => {
-                removewhitelistappidliquidation(deps.as_ref(), app_mapping_id, app_id)?
+                remove_whitelist_app_id_liquidation(deps.as_ref(), app_mapping_id, app_id)?
             }
             ComdexMessages::MsgAddAuctionParams {
                 app_mapping_id: _,

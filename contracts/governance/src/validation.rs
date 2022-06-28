@@ -19,7 +19,7 @@ pub fn validate_threshold(threshold: &Decimal, quorum: &Decimal) -> Result<(), C
 }
 
 /// validate checks to update vault stability fee
-pub fn updatepairvaultstability(
+pub fn update_pairvault_stability(
     deps: Deps<ComdexQuery>,
     app_mapping_id_param: u64,
     ext_pair_id_param: u64,
@@ -45,7 +45,7 @@ pub fn updatepairvaultstability(
 }
 
 /// validate checks to update locker saving rate
-pub fn updatelockerlsr(
+pub fn update_locker_lsr(
     deps: Deps<ComdexQuery>,
     app_mapping_id_param: u64,
     asset_id_param: u64,
@@ -70,7 +70,7 @@ pub fn updatelockerlsr(
     }
 }
 
-pub fn removewhitelistassetlocker(
+pub fn remove_whitelist_asset_locker(
     deps: Deps<ComdexQuery>,
     app_mapping_id_param: u64,
     asset_id_param: u64,
@@ -95,7 +95,7 @@ pub fn removewhitelistassetlocker(
     }
 }
 
-pub fn removewhitelistappidvaultinterest(
+pub fn remove_whitelist_app_id_vault_interest(
     deps: Deps<ComdexQuery>,
     app_mapping_id_param: u64,
     app_id: u64,
@@ -119,7 +119,7 @@ pub fn removewhitelistappidvaultinterest(
 }
 
 // Validation check to whitelist an app for liquidation
-pub fn whitelistappidliquidation(
+pub fn whitelist_app_id_liquidation(
     deps: Deps<ComdexQuery>,
     app_mapping_id_param: u64,
     app_id: u64,
@@ -144,7 +144,7 @@ pub fn whitelistappidliquidation(
 
 // Validation check to remove whitelisted  app for liquidation
 
-pub fn removewhitelistappidliquidation(
+pub fn remove_whitelist_app_id_liquidation(
     deps: Deps<ComdexQuery>,
     app_mapping_id_param: u64,
     app_id: u64,
@@ -168,7 +168,7 @@ pub fn removewhitelistappidliquidation(
 }
 
 //check asset is available for rewards in locker
-pub fn whitelistassetlockerrewards(
+pub fn whitelist_asset_locker_rewards(
     deps: Deps<ComdexQuery>,
     app_mapping_id_param: u64,
     asset_id_param: Vec<u64>,
@@ -194,7 +194,7 @@ pub fn whitelistassetlockerrewards(
 }
 
 /// check if asset and be whitelisted in locker
-pub fn whitelistassetlockereligible(
+pub fn whitelist_asset_locker_eligible(
     deps: Deps<ComdexQuery>,
     app_mapping_id_param: u64,
     asset_id_param: u64,
@@ -220,7 +220,7 @@ pub fn whitelistassetlockereligible(
 }
 
 /// check if mapping is there in collector lookup for thr app and asset
-pub fn collectorlookuptable(
+pub fn collector_lookup_table(
     deps: Deps<ComdexQuery>,
     app_mapping_id_param: u64,
     collector_asset_id_param: u64,
@@ -248,7 +248,7 @@ pub fn collectorlookuptable(
 }
 
 //// check mapping for auction for an app
-pub fn auctionmappingforapp(
+pub fn auction_mapping_for_app(
     deps: Deps<ComdexQuery>,
     app_mapping_id_param: u64,
     app_id: u64,
@@ -271,7 +271,7 @@ pub fn auctionmappingforapp(
     }
 }
 //// eligibility checks to add and extended pair  vaults
-pub fn addextendedpairvault(
+pub fn add_extended_pair_vault(
     deps: Deps<ComdexQuery>,
     app_mapping_id_param: u64,
     pair_id_param: u64,
@@ -309,7 +309,7 @@ pub fn addextendedpairvault(
 }
 
 /// checks for activating vault interest for an app
-pub fn whitelistappidvaultinterest(
+pub fn whitelist_app_id_vault_interest(
     deps: Deps<ComdexQuery>,
     app_mapping_id_param: u64,
     app_id: u64,
