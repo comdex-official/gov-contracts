@@ -1,0 +1,8 @@
+/Users/naveen/Desktop/Projects/gov-contracts/target/debug/deps/ptr_meta-d9bb0c60f71ddaa9.rmeta: /Users/naveen/.cargo/registry/src/github.com-1ecc6299db9ec823/ptr_meta-0.1.4/src/lib.rs /Users/naveen/.cargo/registry/src/github.com-1ecc6299db9ec823/ptr_meta-0.1.4/src/impls.rs
+
+/Users/naveen/Desktop/Projects/gov-contracts/target/debug/deps/libptr_meta-d9bb0c60f71ddaa9.rlib: /Users/naveen/.cargo/registry/src/github.com-1ecc6299db9ec823/ptr_meta-0.1.4/src/lib.rs /Users/naveen/.cargo/registry/src/github.com-1ecc6299db9ec823/ptr_meta-0.1.4/src/impls.rs
+
+/Users/naveen/Desktop/Projects/gov-contracts/target/debug/deps/ptr_meta-d9bb0c60f71ddaa9.d: /Users/naveen/.cargo/registry/src/github.com-1ecc6299db9ec823/ptr_meta-0.1.4/src/lib.rs /Users/naveen/.cargo/registry/src/github.com-1ecc6299db9ec823/ptr_meta-0.1.4/src/impls.rs
+
+/Users/naveen/.cargo/registry/src/github.com-1ecc6299db9ec823/ptr_meta-0.1.4/src/lib.rs:
+/Users/naveen/.cargo/registry/src/github.com-1ecc6299db9ec823/ptr_meta-0.1.4/src/impls.rs:
