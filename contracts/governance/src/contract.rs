@@ -976,7 +976,7 @@ mod tests {
         let a = Uint128::from(10u128);
         let info = mock_info(
             OWNER,
-            &[Coin {
+            &vec![Coin {
                 denom: "coin".to_string(),
                 amount: a,
             }],
