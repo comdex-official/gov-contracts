@@ -971,12 +971,12 @@ mod tests {
     fn test_refund_works() {
         // let id = next_id(&mut deps.storage).unwrap();
         let mut deps = mock_dependencies1();
-        let a = Uint128::from(10u128);
+        let deposit_amount = Uint128::from(10u128);
         let info = mock_info(
             OWNER,
-            &vec![Coin {
+            &[Coin {
                 denom: "coin".to_string(),
-                amount: a,
+                amount: deposit_amount,
             }],
         );
         let _v1 = Vote::Yes;
@@ -1005,7 +1005,7 @@ mod tests {
             },
             deposit: vec![Coin {
                 denom: "vote here".to_string(),
-                amount: a,
+                amount: deposit_amount,
             }],
             proposer: "validator201".to_string(),
             token_denom: "toVote".to_string(),
