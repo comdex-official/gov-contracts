@@ -12,10 +12,7 @@ fn mock_app() -> App {
     App::default()
 }
 
-
-// static WASM: &[u8] = include_bytes!("Governance.wasm");
-static WASM: &[u8] = include_bytes!("governance.wasm");
-
+// TestCase For Initialization Contract. 
 #[test]
 fn proper_initialization() {
 
@@ -28,9 +25,6 @@ fn proper_initialization() {
         }
     }
     let mut deps = mock_dependencies1();
-
-    // let deps = mock_instance(WASM, &[]);
-    // assert_eq!(deps.required_features().len(), 0);
 
         const OWNER: &str = "admin001";
         let addr1 = Addr::unchecked("addr1");
