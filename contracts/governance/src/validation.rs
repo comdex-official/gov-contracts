@@ -3,6 +3,9 @@ use comdex_bindings::{
     ComdexQuery, GetAppResponse, GetAssetDataResponse, MessageValidateResponse, StateResponse,
     TotalSupplyResponse,
 };
+
+use crate::msg::{ExtendedPair};
+
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::{Coin, Decimal, Deps, QueryRequest, StdResult};
 
@@ -273,28 +276,22 @@ pub fn auction_mapping_for_app(
 //// eligibility checks to add and extended pair  vaults
 pub fn add_extended_pair_vault(
     deps: Deps<ComdexQuery>,
-    app_mapping_id_param: u64,
-    pair_id_param: u64,
-    stability_fee_param: Decimal,
-    closing_fee_param: Decimal,
-    draw_down_fee_param: Decimal,
-    debt_ceiling_param: u64,
-    debt_floor_param: u64,
-    pair_name_param: String,
     app_id: u64,
+    extended_pair: ExtendedPair,
+
 ) -> Result<(), ContractError> {
-    if app_mapping_id_param != app_id {
+    if extended_pair.app_mapping_id_param != app_id {
         return Err(ContractError::DifferentAppID {});
     }
     let query = ComdexQuery::ExtendedPairsVaultRecordsQuery {
-        app_mapping_id: app_mapping_id_param,
-        pair_id: pair_id_param,
-        stability_fee: stability_fee_param,
-        closing_fee: closing_fee_param,
-        draw_down_fee: draw_down_fee_param,
-        debt_ceiling: debt_ceiling_param,
-        debt_floor: debt_floor_param,
-        pair_name: pair_name_param,
+        app_mapping_id: extended_pair.app_mapping_id_param,
+        pair_id: extended_pair.pair_id_param,
+        stability_fee: extended_pair.stability_fee_param,
+        closing_fee: extended_pair.closing_fee_param,
+        draw_down_fee: extended_pair.draw_down_fee_param,
+        debt_ceiling: extended_pair.debt_ceiling_param,
+        debt_floor: extended_pair.debt_floor_param,
+        pair_name: extended_pair.pair_name_param,
     };
     let query_result = deps
         .querier

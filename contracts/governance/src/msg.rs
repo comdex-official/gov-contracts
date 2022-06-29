@@ -1,6 +1,6 @@
 use crate::state::Votes;
 use comdex_bindings::ComdexMessages;
-use cosmwasm_std::Timestamp;
+use cosmwasm_std::{Timestamp,Decimal};
 use cw3::{Status, Vote};
 use cw_utils::{Duration, Expiration, Threshold};
 use schemars::JsonSchema;
@@ -40,17 +40,34 @@ pub struct ProposalResponseTotal {
     pub token_denom: String,
     pub current_deposit: u128,
 }
-// TODO: add some T variants? Maybe good enough as fixed Empty for now
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct Propose{
+        pub title: String,
+        pub description: String,
+        pub msgs: Vec<ComdexMessages>,
+        // note: we ignore API-spec'd earliest if passed, always opens immediately
+        pub latest: Option<Expiration>,
+        pub app_id: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct ExtendedPair{
+    pub app_mapping_id_param: u64,
+    pub pair_id_param: u64,
+    pub stability_fee_param: Decimal,
+    pub closing_fee_param: Decimal,
+    pub draw_down_fee_param: Decimal,
+    pub debt_ceiling_param: u64,
+    pub debt_floor_param: u64,
+    pub pair_name_param: String,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     Propose {
-        title: String,
-        description: String,
-        msgs: Vec<ComdexMessages>,
-        // note: we ignore API-spec'd earliest if passed, always opens immediately
-        latest: Option<Expiration>,
-        app_id: u64,
+        propose: Propose,
     },
     Vote {
         proposal_id: u64,
