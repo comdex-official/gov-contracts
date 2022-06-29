@@ -1,1 +1,0 @@
-/Users/naveen/Desktop/Projects/gov-contracts/target/debug/libcomdex_bindings.rlib: /Users/naveen/Desktop/Projects/gov-contracts/packages/bindings/src/lib.rs /Users/naveen/Desktop/Projects/gov-contracts/packages/bindings/src/msg.rs /Users/naveen/Desktop/Projects/gov-contracts/packages/bindings/src/query.rs

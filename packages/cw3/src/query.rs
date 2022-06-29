@@ -1,7 +1,7 @@
 use comdex_bindings::ComdexMessages;
+use cw_utils::{Expiration, ThresholdResponse};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cw_utils::{Expiration, ThresholdResponse};
 
 use crate::msg::Vote;
 

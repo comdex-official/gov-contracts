@@ -14,12 +14,14 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 
 [dependencies]
- cw-utils = { path = "../../packages/utils", version = "0.13.2" }
- cw2= "0.13.2"
-#cw2 = { path = "../../packages/cw2", version = "0.13.2" }
+cw-utils = { path = "../../packages/utils", version = "0.13.2" }
+cw2= "0.13.2"
 cw3 = { path = "../../packages/cw3", version = "0.13.2" }
+<<<<<<< HEAD
 cw-multi-test = "0.13.4"
 cosmwasm-vm = "1.0.0"
+=======
+>>>>>>> 623cb9f689e8b3c72100206bf3ccd328b97e7ca2
 cw-storage-plus =  "0.13.2" 
 cosmwasm-std = { version = "1.0.0-beta8" }
 schemars = "0.8.1"
