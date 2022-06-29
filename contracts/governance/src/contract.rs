@@ -8,9 +8,10 @@ use crate::state::{
 use crate::validation::{
     add_extended_pair_vault, auction_mapping_for_app, collector_lookup_table, get_token_supply,
     query_app_exists, query_get_asset_data, query_owner_token_at_height,
-    remove_whitelist_app_id_liquidation, remove_whitelist_app_id_vault_interest, remove_whitelist_asset_locker,
-    update_locker_lsr, update_pairvault_stability, validate_threshold, whitelist_app_id_liquidation,
-    whitelist_app_id_vault_interest, whitelist_asset_locker_eligible, whitelist_asset_locker_rewards,
+    remove_whitelist_app_id_liquidation, remove_whitelist_app_id_vault_interest,
+    remove_whitelist_asset_locker, update_locker_lsr, update_pairvault_stability,
+    validate_threshold, whitelist_app_id_liquidation, whitelist_app_id_vault_interest,
+    whitelist_asset_locker_eligible, whitelist_asset_locker_rewards,
 };
 use comdex_bindings::{ComdexMessages, ComdexQuery};
 #[cfg(not(feature = "library"))]

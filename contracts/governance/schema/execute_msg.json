@@ -227,10 +227,9 @@
                 "debt_ceiling",
                 "debt_floor",
                 "draw_down_fee",
-                "is_psm_pair",
+                "is_stable_mint_vault",
                 "is_vault_active",
                 "liquidation_penalty",
-                "liquidation_ratio",
                 "min_cr",
                 "min_usd_value_left",
                 "pair_id",
@@ -267,16 +266,13 @@
                 "draw_down_fee": {
                   "$ref": "#/definitions/Decimal"
                 },
-                "is_psm_pair": {
+                "is_stable_mint_vault": {
                   "type": "boolean"
                 },
                 "is_vault_active": {
                   "type": "boolean"
                 },
                 "liquidation_penalty": {
-                  "$ref": "#/definitions/Decimal"
-                },
-                "liquidation_ratio": {
                   "$ref": "#/definitions/Decimal"
                 },
                 "min_cr": {
@@ -499,7 +495,6 @@
                 "draw_down_fee",
                 "ext_pair_id",
                 "liquidation_penalty",
-                "liquidation_ratio",
                 "min_cr",
                 "min_usd_value_left",
                 "stability_fee"
@@ -532,9 +527,6 @@
                   "minimum": 0.0
                 },
                 "liquidation_penalty": {
-                  "$ref": "#/definitions/Decimal"
-                },
-                "liquidation_ratio": {
                   "$ref": "#/definitions/Decimal"
                 },
                 "min_cr": {

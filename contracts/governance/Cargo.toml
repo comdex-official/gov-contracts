@@ -10,7 +10,7 @@ description = "Comdex Governance Contract"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-backtraces = ["cosmwasm-std/backtraces"]
+backtraces = ["cosmwasm-std/backtraces","cosmwasm-vm/backtraces"]
 library = []
 
 [dependencies]
@@ -27,4 +27,6 @@ comdex-bindings = { version = "0.6.0", path = "../../packages/bindings" }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0-beta8" }
+cw-multi-test = "0.13.4"
+cosmwasm-vm = {version="1.0.0"}
 

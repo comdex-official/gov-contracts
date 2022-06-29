@@ -14,6 +14,5 @@ for contract_dir in contracts/*/; do
     cargo clippy --all-targets -- -D warnings
     cargo schema
     cargo wasm
-    cargo integration-test
   )
 done
