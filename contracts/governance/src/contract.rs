@@ -974,7 +974,7 @@ mod tests {
         let a = Uint128::from(10u128);
         let info = mock_info(
             OWNER,
-            &[Coin {
+            &vec![Coin {
                 denom: "coin".to_string(),
                 amount: a,
             }],
@@ -1048,6 +1048,7 @@ mod tests {
         let _votes = prop.votes.clone();
 
         prop.status = Status::Passed;
+        prop.expires = Expiration::Never {};
         _prop = PROPOSALS.save(&mut deps.storage, id, &prop);
         pub const VOTERDEPOSIT: Map<(u64, &Addr), Vec<Coin>> = Map::new("voter deposit");
         let deposit_info = VOTERDEPOSIT
@@ -1081,6 +1082,7 @@ mod tests {
                 .add_attribute("proposal_id", id.to_string()))
         );
     }
+
 
     //   Deposit Testcase
     #[test]
@@ -1149,6 +1151,9 @@ mod tests {
         }])
         .unwrap();
         let mut _deposit = VOTERDEPOSIT.save(&mut deps.storage, (id, &info.sender), &deposit_info1);
+        
+        prop.status = Status::Open;
+        prop.expires = Expiration::Never {};
         _prop = PROPOSALS.save(&mut deps.storage, id, &prop);
         //  If the status is not equal to open or pending, the error "CannotDeposit" will appear.
         let err = execute_deposit(deps.as_mut(), mock_env(), info.clone(), id);
