@@ -1,6 +1,8 @@
 use crate::coin_helpers::assert_sent_sufficient_coin_deposit;
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, ProposalResponseTotal, QueryMsg,Propose,ExtendedPair};
+use crate::msg::{
+    ExecuteMsg, ExtendedPair, InstantiateMsg, ProposalResponseTotal, Propose, QueryMsg,
+};
 use crate::state::{
     next_id, AppGovConfig, Ballot, Config, Proposal, Votes, APPGOVCONFIG, APPPROPOSALS, BALLOTS,
     CONFIG, PROPOSALS, PROPOSALSBYAPP, VOTERDEPOSIT,
@@ -69,9 +71,7 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response<ComdexMessages>, ContractError> {
     match msg {
-        ExecuteMsg::Propose {
-           propose
-        } => execute_propose(deps, env, info, propose),
+        ExecuteMsg::Propose { propose } => execute_propose(deps, env, info, propose),
         ExecuteMsg::Vote { proposal_id, vote } => execute_vote(deps, env, info, proposal_id, vote),
         ExecuteMsg::Execute { proposal_id } => execute_execute(deps, env, info, proposal_id),
         ExecuteMsg::Refund { proposal_id } => execute_refund(deps, env, info, proposal_id),
@@ -172,11 +172,21 @@ pub fn execute_propose(
             ComdexMessages::MsgWhiteListAssetLocker {
                 app_mapping_id,
                 asset_id,
-            } => whitelist_asset_locker_eligible(deps.as_ref(), app_mapping_id, asset_id, propose.app_id)?,
+            } => whitelist_asset_locker_eligible(
+                deps.as_ref(),
+                app_mapping_id,
+                asset_id,
+                propose.app_id,
+            )?,
             ComdexMessages::MsgWhitelistAppIdLockerRewards {
                 app_mapping_id,
                 asset_id,
-            } => whitelist_asset_locker_rewards(deps.as_ref(), app_mapping_id, asset_id, propose.app_id)?,
+            } => whitelist_asset_locker_rewards(
+                deps.as_ref(),
+                app_mapping_id,
+                asset_id,
+                propose.app_id,
+            )?,
             ComdexMessages::MsgWhitelistAppIdVaultInterest { app_mapping_id } => {
                 whitelist_app_id_vault_interest(deps.as_ref(), app_mapping_id, propose.app_id)?
             }
@@ -199,15 +209,16 @@ pub fn execute_propose(
             } => add_extended_pair_vault(
                 deps.as_ref(),
                 propose.app_id,
-                ExtendedPair { app_mapping_id_param: app_mapping_id,
-                               pair_id_param: pair_id, 
-                               stability_fee_param: stability_fee, 
-                               closing_fee_param: closing_fee, 
-                               draw_down_fee_param: draw_down_fee, 
-                               debt_ceiling_param: debt_ceiling, 
-                               debt_floor_param: debt_floor, 
-                               pair_name_param: pair_name }
-                ,
+                ExtendedPair {
+                    app_mapping_id_param: app_mapping_id,
+                    pair_id_param: pair_id,
+                    stability_fee_param: stability_fee,
+                    closing_fee_param: closing_fee,
+                    draw_down_fee_param: draw_down_fee,
+                    debt_ceiling_param: debt_ceiling,
+                    debt_floor_param: debt_floor,
+                    pair_name_param: pair_name,
+                },
             )?,
             ComdexMessages::MsgSetCollectorLookupTable {
                 app_mapping_id,
@@ -238,7 +249,12 @@ pub fn execute_propose(
                 debt_ceiling: _,
                 debt_floor: _,
                 min_usd_value_left: _,
-            } => update_pairvault_stability(deps.as_ref(), app_mapping_id, ext_pair_id, propose.app_id)?,
+            } => update_pairvault_stability(
+                deps.as_ref(),
+                app_mapping_id,
+                ext_pair_id,
+                propose.app_id,
+            )?,
 
             ComdexMessages::MsgSetAuctionMappingForApp {
                 app_mapping_id,
@@ -262,9 +278,18 @@ pub fn execute_propose(
             ComdexMessages::MsgRemoveWhitelistAssetLocker {
                 app_mapping_id,
                 asset_id,
-            } => remove_whitelist_asset_locker(deps.as_ref(), app_mapping_id, asset_id, propose.app_id)?,
+            } => remove_whitelist_asset_locker(
+                deps.as_ref(),
+                app_mapping_id,
+                asset_id,
+                propose.app_id,
+            )?,
             ComdexMessages::MsgRemoveWhitelistAppIdVaultInterest { app_mapping_id } => {
-                remove_whitelist_app_id_vault_interest(deps.as_ref(), app_mapping_id, propose.app_id)?
+                remove_whitelist_app_id_vault_interest(
+                    deps.as_ref(),
+                    app_mapping_id,
+                    propose.app_id,
+                )?
             }
             ComdexMessages::MsgWhitelistAppIdLiquidation { app_mapping_id } => {
                 whitelist_app_id_liquidation(deps.as_ref(), app_mapping_id, propose.app_id)?
@@ -298,12 +323,12 @@ pub fn execute_propose(
 
     // initialize a proposal
     let mut prop = Proposal {
-        title:propose.title,
-        description:propose.description,
+        title: propose.title,
+        description: propose.description,
         start_time: env.block.time,
         start_height: env.block.height,
         expires,
-        msgs:propose.msgs,
+        msgs: propose.msgs,
         duration: max_voting_period,
         status: deposit_status,
         votes: Votes::yes(voting_power.amount.u128()),
@@ -829,9 +854,9 @@ mod tests {
     use cosmwasm_std::{Addr, OwnedDeps};
     use cosmwasm_std::{BankMsg, Decimal};
     use cw_storage_plus::Map;
+    use cw_utils::Expiration;
     use cw_utils::{Duration, Threshold};
     use std::marker::PhantomData;
-    use cw_utils::Expiration;
 
     use super::*;
 
@@ -875,43 +900,28 @@ mod tests {
             ComdexMessages::MsgWhitelistAppIdVaultInterest { app_mapping_id: 34 },
         ];
 
-        let propose_1=Propose
-        {
-         title: "propose".to_string(),
-         description: "test_propose".to_string(),
-         msgs: msgs_com,
-        // note: we ignore API-spec'd earliest if passed, always opens immediately
-         latest: Some(Expiration::Never {}),
-         app_id: 33,
-
+        let propose_1 = Propose {
+            title: "propose".to_string(),
+            description: "test_propose".to_string(),
+            msgs: msgs_com,
+            // note: we ignore API-spec'd earliest if passed, always opens immediately
+            latest: Some(Expiration::Never {}),
+            app_id: 33,
         };
-
 
         //let msgs_length=msgs_com.len();
-        let k = execute_propose(
-            deps.as_mut(),
-            mock_env(),
-            info.clone(),
-            propose_1,
-        );
+        let k = execute_propose(deps.as_mut(), mock_env(), info.clone(), propose_1);
         assert_eq!(k, Err(ContractError::ExtraMessages {}));
         let msgs_2: Vec<ComdexMessages> = vec![];
-        let propose_2=Propose
-        {
-         title: "propose".to_string(),
-         description: "test_propose".to_string(),
-         msgs: msgs_2,
-        // note: we ignore API-spec'd earliest if passed, always opens immediately
-         latest: Some(Expiration::Never {}),
-         app_id: 33,
-
+        let propose_2 = Propose {
+            title: "propose".to_string(),
+            description: "test_propose".to_string(),
+            msgs: msgs_2,
+            // note: we ignore API-spec'd earliest if passed, always opens immediately
+            latest: Some(Expiration::Never {}),
+            app_id: 33,
         };
-        let f = execute_propose(
-            deps.as_mut(),
-            mock_env(),
-            info,
-            propose_2,
-        );
+        let f = execute_propose(deps.as_mut(), mock_env(), info, propose_2);
         assert_eq!(f, Err(ContractError::NoMessage {}));
     }
 
@@ -1091,7 +1101,6 @@ mod tests {
         );
     }
 
-
     //   Deposit Testcase
     #[test]
     fn test_deposit() {
@@ -1159,7 +1168,7 @@ mod tests {
         }])
         .unwrap();
         let mut _deposit = VOTERDEPOSIT.save(&mut deps.storage, (id, &info.sender), &deposit_info1);
-        
+
         prop.status = Status::Open;
         prop.expires = Expiration::Never {};
         _prop = PROPOSALS.save(&mut deps.storage, id, &prop);

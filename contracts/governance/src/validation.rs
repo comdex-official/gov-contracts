@@ -4,7 +4,7 @@ use comdex_bindings::{
     TotalSupplyResponse,
 };
 
-use crate::msg::{ExtendedPair};
+use crate::msg::ExtendedPair;
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::{Coin, Decimal, Deps, QueryRequest, StdResult};
@@ -278,7 +278,6 @@ pub fn add_extended_pair_vault(
     deps: Deps<ComdexQuery>,
     app_id: u64,
     extended_pair: ExtendedPair,
-
 ) -> Result<(), ContractError> {
     if extended_pair.app_mapping_id_param != app_id {
         return Err(ContractError::DifferentAppID {});

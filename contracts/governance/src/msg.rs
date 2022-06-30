@@ -1,6 +1,6 @@
 use crate::state::Votes;
 use comdex_bindings::ComdexMessages;
-use cosmwasm_std::{Timestamp,Decimal};
+use cosmwasm_std::{Decimal, Timestamp};
 use cw3::{Status, Vote};
 use cw_utils::{Duration, Expiration, Threshold};
 use schemars::JsonSchema;
@@ -42,17 +42,17 @@ pub struct ProposalResponseTotal {
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-pub struct Propose{
-        pub title: String,
-        pub description: String,
-        pub msgs: Vec<ComdexMessages>,
-        // note: we ignore API-spec'd earliest if passed, always opens immediately
-        pub latest: Option<Expiration>,
-        pub app_id: u64,
+pub struct Propose {
+    pub title: String,
+    pub description: String,
+    pub msgs: Vec<ComdexMessages>,
+    // note: we ignore API-spec'd earliest if passed, always opens immediately
+    pub latest: Option<Expiration>,
+    pub app_id: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-pub struct ExtendedPair{
+pub struct ExtendedPair {
     pub app_mapping_id_param: u64,
     pub pair_id_param: u64,
     pub stability_fee_param: Decimal,
@@ -66,26 +66,13 @@ pub struct ExtendedPair{
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    Propose {
-        propose: Propose,
-    },
-    Vote {
-        proposal_id: u64,
-        vote: Vote,
-    },
-    Execute {
-        proposal_id: u64,
-    },
-    Refund {
-        proposal_id: u64,
-    },
+    Propose { propose: Propose },
+    Vote { proposal_id: u64, vote: Vote },
+    Execute { proposal_id: u64 },
+    Refund { proposal_id: u64 },
 
-    Deposit {
-        proposal_id: u64,
-    },
-    Slash {
-        proposal_id: u64,
-    },
+    Deposit { proposal_id: u64 },
+    Slash { proposal_id: u64 },
 }
 
 // We can also add this as a cw3 extension

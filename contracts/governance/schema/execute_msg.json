@@ -11,38 +11,11 @@
         "propose": {
           "type": "object",
           "required": [
-            "app_id",
-            "description",
-            "msgs",
-            "title"
+            "propose"
           ],
           "properties": {
-            "app_id": {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
-            },
-            "description": {
-              "type": "string"
-            },
-            "latest": {
-              "anyOf": [
-                {
-                  "$ref": "#/definitions/Expiration"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "msgs": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/ComdexMessages"
-              }
-            },
-            "title": {
-              "type": "string"
+            "propose": {
+              "$ref": "#/definitions/Propose"
             }
           }
         }
@@ -852,6 +825,44 @@
           "additionalProperties": false
         }
       ]
+    },
+    "Propose": {
+      "type": "object",
+      "required": [
+        "app_id",
+        "description",
+        "msgs",
+        "title"
+      ],
+      "properties": {
+        "app_id": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "description": {
+          "type": "string"
+        },
+        "latest": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expiration"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "msgs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ComdexMessages"
+          }
+        },
+        "title": {
+          "type": "string"
+        }
+      }
     },
     "Timestamp": {
       "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
