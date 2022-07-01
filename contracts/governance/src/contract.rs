@@ -80,6 +80,7 @@ pub fn execute(
     }
 }
 
+
 pub fn execute_propose(
     deps: DepsMut<ComdexQuery>,
     env: Env,
@@ -857,6 +858,7 @@ mod tests {
     use cw_utils::Expiration;
     use cw_utils::{Duration, Threshold};
     use std::marker::PhantomData;
+    use crate::msg;
 
     use super::*;
 
@@ -872,22 +874,54 @@ mod tests {
     }
 
     #[test]
-    fn test_instantiate() {
+    fn proper_initialization() {
+
+        pub fn mock_dependencies1() -> OwnedDeps<MockStorage, MockApi, MockQuerier, ComdexQuery> {
+            OwnedDeps {
+                storage: MockStorage::default(),
+                api: MockApi::default(),
+                querier: MockQuerier::default(),
+                custom_query_type: PhantomData,
+            }
+        }
         let mut deps = mock_dependencies1();
-        let info = mock_info(OWNER, &[]);
+    
+            const OWNER: &str = "admin001";
+            let _addr1 = Addr::unchecked("addr1");
+            let _addr2 = Addr::unchecked("addr2");
+            let info = mock_info(OWNER, &[]);
+            
+            let not_acceptable_msg1 = InstantiateMsg{
+                threshold:Threshold::AbsoluteCount { weight: 10 },
+                target:Duration::Height(3).to_string(),
+            };
 
-        let instantiate_msg = InstantiateMsg {
-            threshold: Threshold::ThresholdQuorum {
-                threshold: Decimal::percent(50),
-                quorum: Decimal::percent(33),
-            },
-            target: "0.0.0.0090".to_string(),
-        };
+            let not_acceptable_msg2 = InstantiateMsg{
+                threshold:Threshold::AbsolutePercentage { percentage:Decimal::percent(50) },
+                target:Duration::Height(3).to_string(),
+            };
 
-        let err = instantiate(deps.as_mut(), mock_env(), info, instantiate_msg);
+            let expected_msg = InstantiateMsg{
+                threshold:Threshold::ThresholdQuorum { 
+                    threshold: Decimal::percent(50),
+                    quorum: Decimal::percent(33) },
+                target:Duration::Height(3).to_string(),
+            };
+            
 
-        assert_ne!(err, Err(ContractError::AbsoluteCountNotAccepted {}));
-        assert_ne!(err, Err(ContractError::AbsolutePercentageNotAccepted {}));
+            let res1 = instantiate(deps.as_mut(), mock_env(), info.clone(), not_acceptable_msg1);
+            assert_eq!(res1, Err(ContractError::AbsoluteCountNotAccepted {}));
+
+            let res2 = instantiate(deps.as_mut(), mock_env(), info.clone(), not_acceptable_msg2);
+            assert_eq!(res2, Err(ContractError::AbsolutePercentageNotAccepted {}));
+
+            let res3 = instantiate(deps.as_mut(), mock_env(), info.clone(), expected_msg);
+            assert_ne!(res3, Err(ContractError::AbsoluteCountNotAccepted {}));
+            assert_ne!(res3, Err(ContractError::AbsolutePercentageNotAccepted {}));
+            assert_ne!(res3, Err(ContractError::InvalidThreshold {}));
+            assert_ne!(res3, Err(ContractError::ZeroQuorumThreshold {}));
+            assert_ne!(res3, Err(ContractError::UnreachableQuorumThreshold {}));
+    
     }
     // Propose Testcase
     #[test]
@@ -1249,4 +1283,202 @@ mod tests {
         assert_eq!(prop.current_status(&mock_env().block), Status::Open);
         assert_eq!(prop.status, Status::Open);
     }
+
+    #[test]
+    fn test_slash(){
+        let mut deps = mock_dependencies1();
+        let info = mock_info(OWNER, &[]);
+        let ts = cosmwasm_std::Timestamp::from_nanos(1_655_745_339);
+        let a = Uint128::from(123u128);
+        pub const PROPOSALS: Map<u64, Proposal> = Map::new("proposals");
+        let id = next_id(&mut deps.storage).unwrap();
+
+        let expected_msg = InstantiateMsg{
+            threshold:Threshold::ThresholdQuorum { 
+                threshold: Decimal::percent(50),
+                quorum: Decimal::percent(33) },
+            target:Duration::Height(3).to_string(),
+        };
+        instantiate(deps.as_mut(), mock_env(), info.clone(), expected_msg).unwrap();
+        let mut prop = Proposal {
+            title: "prop".to_string(),
+            start_time: ts,
+            description: "test prop".to_string(),
+            start_height: 43,
+            expires: Expiration::AtTime(cosmwasm_std::Timestamp::from_nanos(1_655_745_430)),
+            msgs: vec![ComdexMessages::MsgWhitelistAppIdVaultInterest { app_mapping_id: 33 }],
+            status: Status::Rejected,
+            duration: Duration::Time(40),
+            threshold: Threshold::ThresholdQuorum {
+                threshold: Decimal::percent(50),
+                quorum: Decimal::percent(33),
+            },
+            total_weight: 40,
+            votes: Votes {
+                yes: 32,
+                no: 24,
+                abstain: 10,
+                veto: 40,
+            },
+            deposit: vec![Coin {
+                denom: "vote here".to_string(),
+                amount: a,
+            }],
+            proposer: "validator201".to_string(),
+            token_denom: "toVote".to_string(),
+            min_deposit: 45,
+            current_deposit: 56,
+            app_mapping_id: 33,
+            is_slashed: false,
+        };
+        prop.expires = Expiration::Never {};
+        prop.update_status(&mock_env().block);
+       
+        //If the majority of votes are vetoed, the Slash should be elected.
+        let _k = PROPOSALS.save(&mut deps.storage, id, &prop);
+        let res = execute_slash(deps.as_mut(), mock_env(), info.clone(), id);
+        assert_ne!(res,Err(ContractError::NotRejected{}));
+        assert_ne!(res,Err(ContractError::AlreadySlashed{}));
+        let  prop1 = PROPOSALS.load(&deps.storage, id).unwrap();
+        // After running slash The is_slashed should be true.
+        assert_eq!(prop1.is_slashed,true);
+        assert_eq!(res,Ok(Response::new()
+        .add_message(ComdexMessages::MsgBurnGovTokensForApp {
+            app_mapping_id: prop.app_mapping_id,
+            amount:Coin { denom: "toVote".to_string(), amount: Uint128::from(56u128) },
+            from: "cosmos2contract".to_string(),
+        })
+        .add_attribute("action", "Slash")
+        .add_attribute("trigger_address", info.sender)
+        .add_attribute("proposal_id", id.to_string())));
+        
+    }
+ 
+ 
+    #[test]
+    fn test_query(){
+        let mut deps = mock_dependencies1();
+        let info = mock_info(OWNER, &[]);
+        let ts = cosmwasm_std::Timestamp::from_nanos(1_655_745_339);
+        let a = Uint128::from(123u128);
+        pub const PROPOSALS: Map<u64, Proposal> = Map::new("proposals");
+        let id = next_id(&mut deps.storage).unwrap();
+
+        let expected_msg = InstantiateMsg{
+            threshold:Threshold::ThresholdQuorum { 
+                threshold: Decimal::percent(50),
+                quorum: Decimal::percent(33) },
+            target:Duration::Height(3).to_string(),
+        };
+        instantiate(deps.as_mut(), mock_env(), info.clone(), expected_msg).unwrap();
+        let mut prop = Proposal {
+            title: "prop".to_string(),
+            start_time: ts,
+            description: "test prop".to_string(),
+            start_height: 43,
+            expires: Expiration::AtTime(cosmwasm_std::Timestamp::from_nanos(1_655_745_430)),
+            msgs: vec![ComdexMessages::MsgWhitelistAppIdVaultInterest { app_mapping_id: 33 }],
+            status: Status::Passed,
+            duration: Duration::Time(40),
+            threshold: Threshold::ThresholdQuorum {
+                threshold: Decimal::percent(50),
+                quorum: Decimal::percent(33),
+            },
+            total_weight: 14,
+            votes: Votes {
+                yes: 32,
+                no: 24,
+                abstain: 10,
+                veto: 3,
+            },
+            deposit: vec![Coin {
+                denom: "vote here".to_string(),
+                amount: a,
+            }],
+            proposer: "validator201".to_string(),
+            token_denom: "toVote".to_string(),
+            min_deposit: 45,
+            current_deposit: 56,
+            app_mapping_id: 33,
+            is_slashed: true,
+        };
+
+        prop.update_status(&mock_env().block);
+        let _k = PROPOSALS.save(&mut deps.storage, id, &prop);
+
+         // Threshold should be from ThreshouldQuorm
+        let  res =query_threshold(deps.as_ref(),  id);
+       assert_eq!(res,Ok(ThresholdResponse::ThresholdQuorum { threshold: (Decimal::percent(50)), quorum: (Decimal::percent(33)), total_weight: (14) }));
+        
+       // Query_propsal_detailed should give deatails respected to propsal id 
+       let res = query_proposal_detailed(deps.as_ref(), mock_env(), id);
+       let ts = cosmwasm_std::Timestamp::from_nanos(1_655_745_339);
+       assert_eq!(res,Ok(msg::ProposalResponseTotal{ 
+        id, 
+        title: "prop".to_string(), 
+        start_time: ts, 
+        description: "test prop".to_string(), 
+        start_height: 43, 
+        expires: Expiration::AtTime(cosmwasm_std::Timestamp::from_nanos(1_655_745_430)), 
+        msgs: vec![ComdexMessages::MsgWhitelistAppIdVaultInterest { app_mapping_id: 33 }], 
+        status: Status::Passed, 
+        duration: Duration::Time(40), 
+        threshold: Threshold::ThresholdQuorum {
+            threshold: Decimal::percent(50),
+            quorum: Decimal::percent(33),
+        }, 
+        total_weight: 14, 
+        votes: Votes {
+            yes: 32,
+            no: 24,
+            abstain: 10,
+            veto: 3,
+        }, 
+        proposer: "validator201".to_string(), 
+        token_denom: "toVote".to_string(), 
+        current_deposit: 56 }));
+
+        // List Proposal Should give list of propsals 
+        let res = list_proposals(deps.as_ref(),mock_env(),Option::None,Option::None);
+        assert_eq!(res,Ok(ProposalListResponse{ proposals:vec![ProposalResponse{id:id,title:"prop".to_string(),description:"test prop".to_string(),msgs:vec![ComdexMessages::MsgWhitelistAppIdVaultInterest{app_mapping_id:33}],status:Status::Passed,expires:Expiration::AtTime(cosmwasm_std::Timestamp::from_nanos(1_655_745_430)),threshold: ThresholdResponse::ThresholdQuorum {
+            threshold: Decimal::percent(50),
+            quorum: Decimal::percent(33),
+            total_weight:14,
+        }}] }));
+
+
+        let res = get_proposals_by_app (deps.as_ref(),mock_env(),33).unwrap();
+        assert_eq!(res.to_vec().len(),0);
+
+        let res = reverse_proposals(deps.as_ref(),mock_env(),Option::None,Option::None);
+        assert_eq!(res,Ok(ProposalListResponse{ proposals:vec![ProposalResponse{id:id,title:"prop".to_string(),description:"test prop".to_string(),msgs:vec![ComdexMessages::MsgWhitelistAppIdVaultInterest{app_mapping_id:33}],status:Status::Passed,expires:Expiration::AtTime(cosmwasm_std::Timestamp::from_nanos(1_655_745_430)),threshold: ThresholdResponse::ThresholdQuorum {
+            threshold: Decimal::percent(50),
+            quorum: Decimal::percent(33),
+            total_weight:14,
+        }}] }));
+
+        let cfg = Config {
+            threshold: Threshold::ThresholdQuorum { 
+                threshold: Decimal::percent(50),
+                quorum: Decimal::percent(33) },
+            target:Duration::Height(3).to_string(),
+        };
+        _=CONFIG.save(&mut deps.storage, &cfg);
+
+        let ballot = Ballot {
+            weight: 10,
+            vote: Vote::Yes,
+        };
+        _=BALLOTS.save(&mut deps.storage, (id, &info.sender), &ballot);
+
+        // Query Vote should show the Vote respected to voter and Propasal id.
+        let res = query_vote(deps.as_ref(), id, OWNER.to_string());
+        assert_eq!(res,Ok(VoteResponse{ vote: Some(VoteInfo { proposal_id: 1, voter: "admin0001".to_string(), vote: Vote::Yes, weight: 10 })}));
+
+        // List Votes should show the VoteInfo respected to proposal id.
+        let res = list_votes(deps.as_ref(), id, Option::None, Option::None);
+        assert_eq!(res ,Ok(VoteListResponse{votes:vec![VoteInfo { proposal_id: 1, voter: "admin0001".to_string(), vote: Vote::Yes, weight: 10 }]}));
+    }
 }
+    
+
