@@ -101,7 +101,7 @@ pub fn execute_propose(
     }
 
     //get app data for app_id
-    let app_response = query_app_exists(deps.as_ref(), propose.app_id)?;
+    let app_response = query_app_exists(deps.as_ref(), propose.app_id_param)?;
 
     let voting_time = app_response.gov_time_in_seconds;
     let min_gov_deposit = app_response.min_gov_deposit;
@@ -115,7 +115,7 @@ pub fn execute_propose(
     }
 
     //get total supply for denom to get proposal weight
-    let total_weight = get_token_supply(deps.as_ref(), propose.app_id, gov_token_id)?;
+    let total_weight = get_token_supply(deps.as_ref(), propose.app_id_param, gov_token_id)?;
     if total_weight == 0 {
         return Err(ContractError::ZeroSupply {});
     }
@@ -171,28 +171,28 @@ pub fn execute_propose(
     for msg in propose.msgs.clone() {
         match msg {
             ComdexMessages::MsgWhiteListAssetLocker {
-                app_mapping_id,
+                app_id,
                 asset_id,
             } => whitelist_asset_locker_eligible(
                 deps.as_ref(),
-                app_mapping_id,
+                app_id,
                 asset_id,
-                propose.app_id,
+                propose.app_id_param,
             )?,
             ComdexMessages::MsgWhitelistAppIdLockerRewards {
-                app_mapping_id,
+                app_id,
                 asset_id,
             } => whitelist_asset_locker_rewards(
                 deps.as_ref(),
-                app_mapping_id,
+                app_id,
                 asset_id,
-                propose.app_id,
+                propose.app_id_param,
             )?,
-            ComdexMessages::MsgWhitelistAppIdVaultInterest { app_mapping_id } => {
-                whitelist_app_id_vault_interest(deps.as_ref(), app_mapping_id, propose.app_id)?
+            ComdexMessages::MsgWhitelistAppIdVaultInterest { app_id } => {
+                whitelist_app_id_vault_interest(deps.as_ref(), app_id, propose.app_id_param)?
             }
             ComdexMessages::MsgAddExtendedPairsVault {
-                app_mapping_id,
+                app_id,
                 pair_id,
                 stability_fee,
                 closing_fee,
@@ -209,9 +209,9 @@ pub fn execute_propose(
                 min_usd_value_left: _,
             } => add_extended_pair_vault(
                 deps.as_ref(),
-                propose.app_id,
+                propose.app_id_param,
                 ExtendedPair {
-                    app_mapping_id_param: app_mapping_id,
+                    app_mapping_id_param: app_id,
                     pair_id_param: pair_id,
                     stability_fee_param: stability_fee,
                     closing_fee_param: closing_fee,
@@ -222,7 +222,7 @@ pub fn execute_propose(
                 },
             )?,
             ComdexMessages::MsgSetCollectorLookupTable {
-                app_mapping_id,
+                app_id,
                 collector_asset_id,
                 secondary_asset_id,
                 surplus_threshold: _,
@@ -233,14 +233,14 @@ pub fn execute_propose(
                 debt_lot_size: _,
             } => collector_lookup_table(
                 deps.as_ref(),
-                app_mapping_id,
+                app_id,
                 collector_asset_id,
                 secondary_asset_id,
-                propose.app_id,
+                propose.app_id_param,
             )?,
 
             ComdexMessages::MsgUpdatePairsVault {
-                app_mapping_id,
+                app_id,
                 ext_pair_id,
                 stability_fee: _,
                 closing_fee: _,
@@ -252,22 +252,22 @@ pub fn execute_propose(
                 min_usd_value_left: _,
             } => update_pairvault_stability(
                 deps.as_ref(),
-                app_mapping_id,
+                app_id,
                 ext_pair_id,
-                propose.app_id,
+                propose.app_id_param,
             )?,
 
             ComdexMessages::MsgSetAuctionMappingForApp {
-                app_mapping_id,
+                app_id,
                 asset_id: _,
                 is_surplus_auction: _,
                 is_debt_auction: _,
                 asset_out_oracle_price: _,
                 asset_out_price: _,
-            } => auction_mapping_for_app(deps.as_ref(), app_mapping_id, propose.app_id)?,
+            } => auction_mapping_for_app(deps.as_ref(), app_id, propose.app_id_param)?,
 
             ComdexMessages::MsgUpdateCollectorLookupTable {
-                app_mapping_id,
+                app_id,
                 asset_id,
                 lsr: _,
                 debt_threshold: _,
@@ -275,31 +275,31 @@ pub fn execute_propose(
                 lot_size: _,
                 debt_lot_size: _,
                 bid_factor: _,
-            } => update_locker_lsr(deps.as_ref(), app_mapping_id, asset_id, propose.app_id)?,
+            } => update_locker_lsr(deps.as_ref(), app_id, asset_id, propose.app_id_param)?,
             ComdexMessages::MsgRemoveWhitelistAssetLocker {
-                app_mapping_id,
+                app_id,
                 asset_id,
             } => remove_whitelist_asset_locker(
                 deps.as_ref(),
-                app_mapping_id,
+                app_id,
                 asset_id,
-                propose.app_id,
+                propose.app_id_param,
             )?,
-            ComdexMessages::MsgRemoveWhitelistAppIdVaultInterest { app_mapping_id } => {
+            ComdexMessages::MsgRemoveWhitelistAppIdVaultInterest { app_id } => {
                 remove_whitelist_app_id_vault_interest(
                     deps.as_ref(),
-                    app_mapping_id,
-                    propose.app_id,
+                    app_id,
+                    propose.app_id_param,
                 )?
             }
-            ComdexMessages::MsgWhitelistAppIdLiquidation { app_mapping_id } => {
-                whitelist_app_id_liquidation(deps.as_ref(), app_mapping_id, propose.app_id)?
+            ComdexMessages::MsgWhitelistAppIdLiquidation { app_id } => {
+                whitelist_app_id_liquidation(deps.as_ref(), app_id, propose.app_id_param)?
             }
-            ComdexMessages::MsgRemoveWhitelistAppIdLiquidation { app_mapping_id } => {
-                remove_whitelist_app_id_liquidation(deps.as_ref(), app_mapping_id, propose.app_id)?
+            ComdexMessages::MsgRemoveWhitelistAppIdLiquidation { app_id } => {
+                remove_whitelist_app_id_liquidation(deps.as_ref(), app_id, propose.app_id_param)?
             }
             ComdexMessages::MsgAddAuctionParams {
-                app_mapping_id: _,
+                app_id: _,
                 auction_duration_seconds: _,
                 buffer: _,
                 cusp: _,
@@ -340,7 +340,7 @@ pub fn execute_propose(
         token_denom: gov_token_denom,
         min_deposit: min_gov_deposit,
         current_deposit: gov_current_deposit,
-        app_mapping_id: propose.app_id,
+        app_mapping_id: propose.app_id_param,
         is_slashed: false,
     };
 
@@ -348,7 +348,7 @@ pub fn execute_propose(
     prop.update_status(&env.block);
 
     //get proposals by app
-    let mut app_proposals = match APPPROPOSALS.may_load(deps.storage, propose.app_id)? {
+    let mut app_proposals = match APPPROPOSALS.may_load(deps.storage, propose.app_id_param)? {
         Some(record) => record,
         None => vec![],
     };
@@ -362,7 +362,7 @@ pub fn execute_propose(
         proposal_id: id,
         proposal: prop.clone(),
     });
-    APPPROPOSALS.save(deps.storage, propose.app_id, &app_proposals)?;
+    APPPROPOSALS.save(deps.storage, propose.app_id_param, &app_proposals)?;
 
     // add the first yes vote from voter
     let ballot = Ballot {
@@ -373,12 +373,12 @@ pub fn execute_propose(
     BALLOTS.save(deps.storage, (id, &info.sender), &ballot)?;
     VOTERDEPOSIT.save(deps.storage, (id, &info.sender), &info.funds)?;
 
-    let propbyapp = match PROPOSALSBYAPP.may_load(deps.storage, propose.app_id)? {
+    let propbyapp = match PROPOSALSBYAPP.may_load(deps.storage, propose.app_id_param)? {
         Some(data) => Some(data),
         None => Some(vec![]),
     };
 
-    let mut app_gov_info = match APPGOVCONFIG.may_load(deps.storage, propose.app_id)? {
+    let mut app_gov_info = match APPGOVCONFIG.may_load(deps.storage, propose.app_id_param)? {
         Some(data) => data,
         None => AppGovConfig {
             proposal_count: 0,
@@ -395,8 +395,8 @@ pub fn execute_propose(
     let mut proposals_by_app = propbyapp.unwrap();
 
     proposals_by_app.push(id);
-    PROPOSALSBYAPP.save(deps.storage, propose.app_id, &proposals_by_app)?;
-    APPGOVCONFIG.save(deps.storage, propose.app_id, &app_gov_info)?;
+    PROPOSALSBYAPP.save(deps.storage, propose.app_id_param, &proposals_by_app)?;
+    APPGOVCONFIG.save(deps.storage, propose.app_id_param, &app_gov_info)?;
 
     Ok(Response::new()
         .add_attribute("action", "propose")
@@ -637,7 +637,7 @@ pub fn execute_slash(
 
     Ok(Response::new()
         .add_message(ComdexMessages::MsgBurnGovTokensForApp {
-            app_mapping_id: prop.app_mapping_id,
+            app_id: prop.app_mapping_id,
             amount: slash_amount,
             from: env.contract.address.to_string(),
         })
@@ -930,8 +930,8 @@ mod tests {
         //let mut deps2=mock_dependencies1();
         let info = mock_info(OWNER, &[]);
         let msgs_com = vec![
-            ComdexMessages::MsgWhitelistAppIdVaultInterest { app_mapping_id: 33 },
-            ComdexMessages::MsgWhitelistAppIdVaultInterest { app_mapping_id: 34 },
+            ComdexMessages::MsgWhitelistAppIdVaultInterest { app_id: 33 },
+            ComdexMessages::MsgWhitelistAppIdVaultInterest { app_id: 34 },
         ];
 
         let propose_1 = Propose {
@@ -940,7 +940,7 @@ mod tests {
             msgs: msgs_com,
             // note: we ignore API-spec'd earliest if passed, always opens immediately
             latest: Some(Expiration::Never {}),
-            app_id: 33,
+            app_id_param: 33,
         };
 
         //let msgs_length=msgs_com.len();
@@ -953,7 +953,7 @@ mod tests {
             msgs: msgs_2,
             // note: we ignore API-spec'd earliest if passed, always opens immediately
             latest: Some(Expiration::Never {}),
-            app_id: 33,
+            app_id_param: 33,
         };
         let f = execute_propose(deps.as_mut(), mock_env(), info, propose_2);
         assert_eq!(f, Err(ContractError::NoMessage {}));
@@ -974,7 +974,7 @@ mod tests {
             description: "test prop".to_string(),
             start_height: 43,
             expires: Expiration::AtTime(cosmwasm_std::Timestamp::from_nanos(1_655_745_430)),
-            msgs: vec![ComdexMessages::MsgWhitelistAppIdVaultInterest { app_mapping_id: 33 }],
+            msgs: vec![ComdexMessages::MsgWhitelistAppIdVaultInterest { app_id: 33 }],
             status: Status::Passed,
             duration: Duration::Time(40),
             threshold: Threshold::ThresholdQuorum {
@@ -1041,7 +1041,7 @@ mod tests {
             description: "test prop".to_string(),
             start_height: 43,
             expires: Expiration::Never {},
-            msgs: vec![ComdexMessages::MsgWhitelistAppIdVaultInterest { app_mapping_id: 33 }],
+            msgs: vec![ComdexMessages::MsgWhitelistAppIdVaultInterest { app_id: 33 }],
             status: Status::Pending,
             duration: Duration::Time(50000000),
             threshold: Threshold::ThresholdQuorum {
@@ -1158,7 +1158,7 @@ mod tests {
             description: "test prop".to_string(),
             start_height: 43,
             expires: Expiration::AtTime(cosmwasm_std::Timestamp::from_nanos(1_655_745_430)),
-            msgs: vec![ComdexMessages::MsgWhitelistAppIdVaultInterest { app_mapping_id: 33 }],
+            msgs: vec![ComdexMessages::MsgWhitelistAppIdVaultInterest { app_id: 33 }],
             status: Status::Executed,
             duration: Duration::Time(40),
             threshold: Threshold::ThresholdQuorum {
@@ -1236,7 +1236,7 @@ mod tests {
             description: "test prop".to_string(),
             start_height: 43,
             expires: Expiration::AtTime(cosmwasm_std::Timestamp::from_nanos(1_655_897_190)),
-            msgs: vec![ComdexMessages::MsgWhitelistAppIdVaultInterest { app_mapping_id: id }],
+            msgs: vec![ComdexMessages::MsgWhitelistAppIdVaultInterest { app_id: id }],
             status: Status::Passed,
             duration: Duration::Time(400000000),
             threshold: Threshold::ThresholdQuorum {
@@ -1306,7 +1306,7 @@ mod tests {
             description: "test prop".to_string(),
             start_height: 43,
             expires: Expiration::AtTime(cosmwasm_std::Timestamp::from_nanos(1_655_745_430)),
-            msgs: vec![ComdexMessages::MsgWhitelistAppIdVaultInterest { app_mapping_id: 33 }],
+            msgs: vec![ComdexMessages::MsgWhitelistAppIdVaultInterest { app_id: 33 }],
             status: Status::Rejected,
             duration: Duration::Time(40),
             threshold: Threshold::ThresholdQuorum {
@@ -1344,7 +1344,7 @@ mod tests {
         assert_eq!(prop1.is_slashed,true);
         assert_eq!(res,Ok(Response::new()
         .add_message(ComdexMessages::MsgBurnGovTokensForApp {
-            app_mapping_id: prop.app_mapping_id,
+            app_id: prop.app_mapping_id,
             amount:Coin { denom: "toVote".to_string(), amount: Uint128::from(56u128) },
             from: "cosmos2contract".to_string(),
         })
@@ -1377,7 +1377,7 @@ mod tests {
             description: "test prop".to_string(),
             start_height: 43,
             expires: Expiration::AtTime(cosmwasm_std::Timestamp::from_nanos(1_655_745_430)),
-            msgs: vec![ComdexMessages::MsgWhitelistAppIdVaultInterest { app_mapping_id: 33 }],
+            msgs: vec![ComdexMessages::MsgWhitelistAppIdVaultInterest { app_id: 33 }],
             status: Status::Passed,
             duration: Duration::Time(40),
             threshold: Threshold::ThresholdQuorum {
@@ -1420,7 +1420,7 @@ mod tests {
         description: "test prop".to_string(), 
         start_height: 43, 
         expires: Expiration::AtTime(cosmwasm_std::Timestamp::from_nanos(1_655_745_430)), 
-        msgs: vec![ComdexMessages::MsgWhitelistAppIdVaultInterest { app_mapping_id: 33 }], 
+        msgs: vec![ComdexMessages::MsgWhitelistAppIdVaultInterest { app_id: 33 }], 
         status: Status::Passed, 
         duration: Duration::Time(40), 
         threshold: Threshold::ThresholdQuorum {
@@ -1440,7 +1440,7 @@ mod tests {
 
         // List Proposal Should give list of propsals 
         let res = list_proposals(deps.as_ref(),mock_env(),Option::None,Option::None);
-        assert_eq!(res,Ok(ProposalListResponse{ proposals:vec![ProposalResponse{id:id,title:"prop".to_string(),description:"test prop".to_string(),msgs:vec![ComdexMessages::MsgWhitelistAppIdVaultInterest{app_mapping_id:33}],status:Status::Passed,expires:Expiration::AtTime(cosmwasm_std::Timestamp::from_nanos(1_655_745_430)),threshold: ThresholdResponse::ThresholdQuorum {
+        assert_eq!(res,Ok(ProposalListResponse{ proposals:vec![ProposalResponse{id:id,title:"prop".to_string(),description:"test prop".to_string(),msgs:vec![ComdexMessages::MsgWhitelistAppIdVaultInterest{app_id:33}],status:Status::Passed,expires:Expiration::AtTime(cosmwasm_std::Timestamp::from_nanos(1_655_745_430)),threshold: ThresholdResponse::ThresholdQuorum {
             threshold: Decimal::percent(50),
             quorum: Decimal::percent(33),
             total_weight:14,
@@ -1451,7 +1451,7 @@ mod tests {
         assert_eq!(res.to_vec().len(),0);
 
         let res = reverse_proposals(deps.as_ref(),mock_env(),Option::None,Option::None);
-        assert_eq!(res,Ok(ProposalListResponse{ proposals:vec![ProposalResponse{id:id,title:"prop".to_string(),description:"test prop".to_string(),msgs:vec![ComdexMessages::MsgWhitelistAppIdVaultInterest{app_mapping_id:33}],status:Status::Passed,expires:Expiration::AtTime(cosmwasm_std::Timestamp::from_nanos(1_655_745_430)),threshold: ThresholdResponse::ThresholdQuorum {
+        assert_eq!(res,Ok(ProposalListResponse{ proposals:vec![ProposalResponse{id:id,title:"prop".to_string(),description:"test prop".to_string(),msgs:vec![ComdexMessages::MsgWhitelistAppIdVaultInterest{app_id:33}],status:Status::Passed,expires:Expiration::AtTime(cosmwasm_std::Timestamp::from_nanos(1_655_745_430)),threshold: ThresholdResponse::ThresholdQuorum {
             threshold: Decimal::percent(50),
             quorum: Decimal::percent(33),
             total_weight:14,

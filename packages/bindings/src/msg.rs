@@ -7,11 +7,11 @@ use serde::{Deserialize, Serialize};
 /// A number of Custom messages that can call into the Comdex bindings
 pub enum ComdexMessages {
     MsgWhiteListAssetLocker {
-        app_mapping_id: u64,
+        app_id: u64,
         asset_id: u64,
     },
     MsgAddExtendedPairsVault {
-        app_mapping_id: u64,
+        app_id: u64,
         pair_id: u64,
         stability_fee: Decimal,
         closing_fee: Decimal,
@@ -28,7 +28,7 @@ pub enum ComdexMessages {
         min_usd_value_left: u64,
     },
     MsgSetCollectorLookupTable {
-        app_mapping_id: u64,
+        app_id: u64,
         collector_asset_id: u64,
         secondary_asset_id: u64,
         surplus_threshold: u64,
@@ -39,7 +39,7 @@ pub enum ComdexMessages {
         debt_lot_size: u64,
     },
     MsgSetAuctionMappingForApp {
-        app_mapping_id: u64,
+        app_id: u64,
         asset_id: Vec<u64>,
         is_surplus_auction: Vec<bool>,
         is_debt_auction: Vec<bool>,
@@ -47,14 +47,14 @@ pub enum ComdexMessages {
         asset_out_price: Vec<u64>,
     },
     MsgWhitelistAppIdVaultInterest {
-        app_mapping_id: u64,
+        app_id: u64,
     },
     MsgWhitelistAppIdLockerRewards {
-        app_mapping_id: u64,
+        app_id: u64,
         asset_id: Vec<u64>,
     },
     MsgUpdatePairsVault {
-        app_mapping_id: u64,
+        app_id: u64,
         ext_pair_id: u64,
         stability_fee: Decimal,
         closing_fee: Decimal,
@@ -66,7 +66,7 @@ pub enum ComdexMessages {
         min_usd_value_left: u64,
     },
     MsgUpdateCollectorLookupTable {
-        app_mapping_id: u64,
+        app_id: u64,
         asset_id: u64,
         lsr: Decimal,
         debt_threshold: u64,
@@ -76,20 +76,20 @@ pub enum ComdexMessages {
         bid_factor: Decimal,
     },
     MsgRemoveWhitelistAssetLocker {
-        app_mapping_id: u64,
+        app_id: u64,
         asset_id: u64,
     },
     MsgRemoveWhitelistAppIdVaultInterest {
-        app_mapping_id: u64,
+        app_id: u64,
     },
     MsgWhitelistAppIdLiquidation {
-        app_mapping_id: u64,
+        app_id: u64,
     },
     MsgRemoveWhitelistAppIdLiquidation {
-        app_mapping_id: u64,
+        app_id: u64,
     },
     MsgAddAuctionParams {
-        app_mapping_id: u64,
+        app_id: u64,
         auction_duration_seconds: u64,
         buffer: Decimal,
         cusp: Decimal,
@@ -101,7 +101,7 @@ pub enum ComdexMessages {
         bid_duration_seconds: u64,
     },
     MsgBurnGovTokensForApp {
-        app_mapping_id: u64,
+        app_id: u64,
         amount: Coin,
         from: String,
     },

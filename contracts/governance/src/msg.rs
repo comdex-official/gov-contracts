@@ -48,7 +48,7 @@ pub struct Propose {
     pub msgs: Vec<ComdexMessages>,
     // note: we ignore API-spec'd earliest if passed, always opens immediately
     pub latest: Option<Expiration>,
-    pub app_id: u64,
+    pub app_id_param: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
