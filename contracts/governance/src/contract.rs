@@ -1249,4 +1249,47 @@ mod tests {
         assert_eq!(prop.current_status(&mock_env().block), Status::Open);
         assert_eq!(prop.status, Status::Open);
     }
+    
+    #[test]
+ fn test_query_listproposals(){
+    let mut deps = mock_dependencies1();
+    let a = Uint128::from(123u128);
+    let info = mock_info(OWNER, &[Coin{denom:"coin".to_string(),amount:a}]);
+    let v1=Vote::Yes;
+    let ts=cosmwasm_std::Timestamp::from_nanos(1_655_745_339);
+    pub const PROPOSALS: Map<u64, Proposal> = Map::new("proposals");
+    let id = next_id(&mut deps.storage).unwrap();
+
+    let mut prop=Proposal{title:"prop".to_string(),
+                                   start_time:ts,
+                                   description:"test prop".to_string(),
+                                   start_height:43,
+                                   expires:Expiration::AtTime(cosmwasm_std::Timestamp::from_nanos(1_655_897_190)),
+                                   msgs:vec![ComdexMessages::MsgWhitelistAppIdVaultInterest{app_mapping_id:id}],
+                                   status:Status::Passed,
+                                   duration:Duration::Time(400000000),
+                                   threshold: Threshold::ThresholdQuorum {
+                                    threshold: Decimal::percent(50),
+                                    quorum: Decimal::percent(33),
+                                },
+                                total_weight:40,
+                                votes:Votes{yes:32,no:24,abstain:10,veto:3},
+                                deposit:vec![Coin{denom:"vote here".to_string(),amount:a }],
+                                proposer:"validator201".to_string(),
+                                token_denom:"toVote".to_string(),
+                                min_deposit:45,
+                                current_deposit:56,
+                                app_mapping_id:id,
+                                is_slashed:false,
+                            };
+    PROPOSALS.save(&mut deps.storage, id, &prop);
+    
+    let x=list_proposals(deps.as_ref(),mock_env(),None,None);
+    
+    assert_eq!(x,Ok(ProposalListResponse{ proposals:vec![ProposalResponse{id:id,title:"prop".to_string(),description:"test prop".to_string(),msgs:vec![ComdexMessages::MsgWhitelistAppIdVaultInterest{app_mapping_id:id}],status:Status::Passed,expires:Expiration::AtTime(cosmwasm_std::Timestamp::from_nanos(1_655_897_190)),threshold: ThresholdResponse::ThresholdQuorum {
+        threshold: Decimal::percent(50),
+        quorum: Decimal::percent(33),
+        total_weight:40,
+    }}] }));
+ }
 }
