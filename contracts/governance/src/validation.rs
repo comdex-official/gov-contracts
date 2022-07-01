@@ -32,7 +32,7 @@ pub fn update_pairvault_stability(
         return Err(ContractError::DifferentAppID {});
     }
     let query = ComdexQuery::UpdatePairsVaultQuery {
-        app_mapping_id: app_mapping_id_param,
+        app_id: app_mapping_id_param,
         ext_pair_id: ext_pair_id_param,
     };
     let query_result = deps
@@ -58,7 +58,7 @@ pub fn update_locker_lsr(
         return Err(ContractError::DifferentAppID {});
     }
     let query = ComdexQuery::UpdateCollectorLookupTableQuery {
-        app_mapping_id: app_mapping_id_param,
+        app_id: app_mapping_id_param,
         asset_id: asset_id_param,
     };
     let query_result = deps
@@ -83,7 +83,7 @@ pub fn remove_whitelist_asset_locker(
         return Err(ContractError::DifferentAppID {});
     }
     let query = ComdexQuery::RemoveWhitelistAssetLockerQuery {
-        app_mapping_id: app_mapping_id_param,
+        app_id: app_mapping_id_param,
         asset_id: asset_id_param,
     };
     let query_result = deps
@@ -107,7 +107,7 @@ pub fn remove_whitelist_app_id_vault_interest(
         return Err(ContractError::DifferentAppID {});
     }
     let query = ComdexQuery::RemoveWhitelistAppIdVaultInterestQuery {
-        app_mapping_id: app_mapping_id_param,
+        app_id: app_mapping_id_param,
     };
     let query_result = deps
         .querier
@@ -131,7 +131,7 @@ pub fn whitelist_app_id_liquidation(
         return Err(ContractError::DifferentAppID {});
     }
     let query = ComdexQuery::WhitelistAppIdLiquidationQuery {
-        app_mapping_id: app_mapping_id_param,
+        app_id: app_mapping_id_param,
     };
     let query_result = deps
         .querier
@@ -156,7 +156,7 @@ pub fn remove_whitelist_app_id_liquidation(
         return Err(ContractError::DifferentAppID {});
     }
     let query = ComdexQuery::RemoveWhitelistAppIdLiquidationQuery {
-        app_mapping_id: app_mapping_id_param,
+        app_id: app_mapping_id_param,
     };
     let query_result = deps
         .querier
@@ -181,7 +181,7 @@ pub fn whitelist_asset_locker_rewards(
         return Err(ContractError::DifferentAppID {});
     }
     let query = ComdexQuery::WhitelistAppIdLockerRewards {
-        app_mapping_id: app_mapping_id_param,
+        app_id: app_mapping_id_param,
         asset_id: asset_id_param,
     };
     let query_result = deps
@@ -207,7 +207,7 @@ pub fn whitelist_asset_locker_eligible(
         return Err(ContractError::DifferentAppID {});
     }
     let query = ComdexQuery::WhiteListedAssetQuery {
-        app_mapping_id: app_mapping_id_param,
+        app_id: app_mapping_id_param,
         asset_id: asset_id_param,
     };
     let query_result = deps
@@ -234,7 +234,7 @@ pub fn collector_lookup_table(
         return Err(ContractError::DifferentAppID {});
     }
     let query = ComdexQuery::CollectorLookupTableQuery {
-        app_mapping_id: app_mapping_id_param,
+        app_id: app_mapping_id_param,
         collector_asset_id: collector_asset_id_param,
         secondary_asset_id: secondary_asset_id_param,
     };
@@ -260,7 +260,7 @@ pub fn auction_mapping_for_app(
         return Err(ContractError::DifferentAppID {});
     }
     let query = ComdexQuery::AuctionMappingForAppQuery {
-        app_mapping_id: app_mapping_id_param,
+        app_id: app_mapping_id_param,
     };
     let query_result = deps
         .querier
@@ -283,7 +283,7 @@ pub fn add_extended_pair_vault(
         return Err(ContractError::DifferentAppID {});
     }
     let query = ComdexQuery::ExtendedPairsVaultRecordsQuery {
-        app_mapping_id: extended_pair.app_mapping_id_param,
+        app_id: extended_pair.app_mapping_id_param,
         pair_id: extended_pair.pair_id_param,
         stability_fee: extended_pair.stability_fee_param,
         closing_fee: extended_pair.closing_fee_param,
@@ -314,7 +314,7 @@ pub fn whitelist_app_id_vault_interest(
         return Err(ContractError::DifferentAppID {});
     }
     let query = ComdexQuery::WhitelistAppIdVaultInterest {
-        app_mapping_id: app_mapping_id_param,
+        app_id: app_mapping_id_param,
     };
     let query_result = deps
         .querier
@@ -357,7 +357,7 @@ pub fn query_app_exists(
     let app_info =
         deps.querier
             .query::<GetAppResponse>(&QueryRequest::Custom(ComdexQuery::GetApp {
-                app_mapping_id: app_mapping_id_param,
+                app_id: app_mapping_id_param,
             }))?;
 
     Ok(app_info)
@@ -383,7 +383,7 @@ pub fn get_token_supply(
     let total_token_supply = deps
         .querier
         .query::<TotalSupplyResponse>(&QueryRequest::Custom(ComdexQuery::TotalSupply {
-            app_mapping_id: app_id_param,
+            app_id: app_id_param,
             asset_id: asset_id_param,
         }))?;
 

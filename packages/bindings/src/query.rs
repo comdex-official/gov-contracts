@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "snake_case")]
 pub enum ComdexQuery {
     TotalSupply {
-        app_mapping_id: u64,
+        app_id: u64,
         asset_id: u64,
     },
     State {
@@ -16,33 +16,33 @@ pub enum ComdexQuery {
         target: String,
     },
     GetApp {
-        app_mapping_id: u64,
+        app_id: u64,
     },
     GetAssetData {
         asset_id: u64,
     },
     WhiteListedAssetQuery {
-        app_mapping_id: u64,
+        app_id: u64,
         asset_id: u64,
     },
     WhitelistAppIdLockerRewards {
-        app_mapping_id: u64,
+        app_id: u64,
         asset_id: Vec<u64>,
     },
     WhitelistAppIdVaultInterest {
-        app_mapping_id: u64,
+        app_id: u64,
     },
     RemoveWhiteListAsset {
-        app_mapping_id: u64,
+        app_id: u64,
         asset_id: Vec<u64>,
     },
     CollectorLookupTableQuery {
-        app_mapping_id: u64,
+        app_id: u64,
         collector_asset_id: u64,
         secondary_asset_id: u64,
     },
     ExtendedPairsVaultRecordsQuery {
-        app_mapping_id: u64,
+        app_id: u64,
         pair_id: u64,
         stability_fee: Decimal,
         closing_fee: Decimal,
@@ -52,28 +52,28 @@ pub enum ComdexQuery {
         pair_name: String,
     },
     UpdatePairsVaultQuery {
-        app_mapping_id: u64,
+        app_id: u64,
         ext_pair_id: u64,
     },
     AuctionMappingForAppQuery {
-        app_mapping_id: u64,
+        app_id: u64,
     },
     UpdateCollectorLookupTableQuery {
-        app_mapping_id: u64,
+        app_id: u64,
         asset_id: u64,
     },
     RemoveWhitelistAssetLockerQuery {
-        app_mapping_id: u64,
+        app_id: u64,
         asset_id: u64,
     },
     RemoveWhitelistAppIdVaultInterestQuery {
-        app_mapping_id: u64,
+        app_id: u64,
     },
     WhitelistAppIdLiquidationQuery {
-        app_mapping_id: u64,
+        app_id: u64,
     },
     RemoveWhitelistAppIdLiquidationQuery {
-        app_mapping_id: u64,
+        app_id: u64,
     },
 }
 
