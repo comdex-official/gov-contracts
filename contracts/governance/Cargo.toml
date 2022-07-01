@@ -23,7 +23,6 @@ schemars = "0.8.1"
 serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.23" }
 comdex-bindings = { version = "0.6.0", path = "../../packages/bindings" }
-cargo-llvm-cov={version ="0.4.8"}
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0-beta8" }

@@ -1,2 +1,2 @@
-fab6bd080eb51eac4f68b4d968d9ca2dfe35d80d9f2cbc95b89d0d49ad4072bf  Governance.wasm
+33004a14a3f33e9c331d4e11c2d01a147e9a34ffdc0bb5d5298ad3f386c309a6  Governance.wasm
 20c78cbe63e2c700e3b69a0107ec0e608abcf4316f060753dca22ddaaff641c2  governance-aarch64.wasm
