@@ -51,7 +51,7 @@ pub enum ComdexMessages {
     },
     MsgWhitelistAppIdLockerRewards {
         app_id: u64,
-        asset_id: Vec<u64>,
+        asset_ids: Vec<u64>,
     },
     MsgUpdatePairsVault {
         app_id: u64,
@@ -104,6 +104,12 @@ pub enum ComdexMessages {
         app_id: u64,
         amount: Coin,
         from: String,
+    },
+
+    MsgAddESMTriggerParams {
+        app_id: u64,
+        target_value: Coin,
+        cool_off_period: u64,
     },
 }
 

@@ -1,6 +1,5 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-
 use cosmwasm_std::{Decimal, StdError};
 use thiserror::Error;
 

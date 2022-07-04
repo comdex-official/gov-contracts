@@ -328,6 +328,29 @@ pub fn whitelist_app_id_vault_interest(
     }
 }
 
+pub fn set_esm_params(
+    deps: Deps<ComdexQuery>,
+    app_mapping_id_param: u64,
+    app_id: u64,
+) -> Result<(), ContractError> {
+    if app_mapping_id_param != app_id {
+        return Err(ContractError::DifferentAppID {});
+    }
+    let query = ComdexQuery::AddESMTriggerParamsForAppQuery {
+        app_id: app_mapping_id_param,
+    };
+    let query_result = deps
+        .querier
+        .query::<MessageValidateResponse>(&QueryRequest::Custom(query))?;
+
+    if query_result.found {
+        Ok(())
+    } else {
+        let err = query_result.err;
+        Err(ContractError::ProposalError { err })
+    }
+}
+
 /// query token balance of a user for a denom at a specific height
 pub fn query_owner_token_at_height(
     deps: Deps<ComdexQuery>,

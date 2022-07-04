@@ -165,11 +165,11 @@
             "msg_white_list_asset_locker": {
               "type": "object",
               "required": [
-                "app_mapping_id",
+                "app_id",
                 "asset_id"
               ],
               "properties": {
-                "app_mapping_id": {
+                "app_id": {
                   "type": "integer",
                   "format": "uint64",
                   "minimum": 0.0
@@ -193,7 +193,7 @@
             "msg_add_extended_pairs_vault": {
               "type": "object",
               "required": [
-                "app_mapping_id",
+                "app_id",
                 "asset_out_oracle_price",
                 "asset_out_price",
                 "closing_fee",
@@ -210,7 +210,7 @@
                 "stability_fee"
               ],
               "properties": {
-                "app_mapping_id": {
+                "app_id": {
                   "type": "integer",
                   "format": "uint64",
                   "minimum": 0.0
@@ -281,7 +281,7 @@
             "msg_set_collector_lookup_table": {
               "type": "object",
               "required": [
-                "app_mapping_id",
+                "app_id",
                 "bid_factor",
                 "collector_asset_id",
                 "debt_lot_size",
@@ -292,7 +292,7 @@
                 "surplus_threshold"
               ],
               "properties": {
-                "app_mapping_id": {
+                "app_id": {
                   "type": "integer",
                   "format": "uint64",
                   "minimum": 0.0
@@ -347,7 +347,7 @@
             "msg_set_auction_mapping_for_app": {
               "type": "object",
               "required": [
-                "app_mapping_id",
+                "app_id",
                 "asset_id",
                 "asset_out_oracle_price",
                 "asset_out_price",
@@ -355,7 +355,7 @@
                 "is_surplus_auction"
               ],
               "properties": {
-                "app_mapping_id": {
+                "app_id": {
                   "type": "integer",
                   "format": "uint64",
                   "minimum": 0.0
@@ -408,10 +408,10 @@
             "msg_whitelist_app_id_vault_interest": {
               "type": "object",
               "required": [
-                "app_mapping_id"
+                "app_id"
               ],
               "properties": {
-                "app_mapping_id": {
+                "app_id": {
                   "type": "integer",
                   "format": "uint64",
                   "minimum": 0.0
@@ -430,16 +430,16 @@
             "msg_whitelist_app_id_locker_rewards": {
               "type": "object",
               "required": [
-                "app_mapping_id",
-                "asset_id"
+                "app_id",
+                "asset_ids"
               ],
               "properties": {
-                "app_mapping_id": {
+                "app_id": {
                   "type": "integer",
                   "format": "uint64",
                   "minimum": 0.0
                 },
-                "asset_id": {
+                "asset_ids": {
                   "type": "array",
                   "items": {
                     "type": "integer",
@@ -461,7 +461,7 @@
             "msg_update_pairs_vault": {
               "type": "object",
               "required": [
-                "app_mapping_id",
+                "app_id",
                 "closing_fee",
                 "debt_ceiling",
                 "debt_floor",
@@ -473,7 +473,7 @@
                 "stability_fee"
               ],
               "properties": {
-                "app_mapping_id": {
+                "app_id": {
                   "type": "integer",
                   "format": "uint64",
                   "minimum": 0.0
@@ -527,7 +527,7 @@
             "msg_update_collector_lookup_table": {
               "type": "object",
               "required": [
-                "app_mapping_id",
+                "app_id",
                 "asset_id",
                 "bid_factor",
                 "debt_lot_size",
@@ -537,7 +537,7 @@
                 "surplus_threshold"
               ],
               "properties": {
-                "app_mapping_id": {
+                "app_id": {
                   "type": "integer",
                   "format": "uint64",
                   "minimum": 0.0
@@ -587,11 +587,11 @@
             "msg_remove_whitelist_asset_locker": {
               "type": "object",
               "required": [
-                "app_mapping_id",
+                "app_id",
                 "asset_id"
               ],
               "properties": {
-                "app_mapping_id": {
+                "app_id": {
                   "type": "integer",
                   "format": "uint64",
                   "minimum": 0.0
@@ -615,10 +615,10 @@
             "msg_remove_whitelist_app_id_vault_interest": {
               "type": "object",
               "required": [
-                "app_mapping_id"
+                "app_id"
               ],
               "properties": {
-                "app_mapping_id": {
+                "app_id": {
                   "type": "integer",
                   "format": "uint64",
                   "minimum": 0.0
@@ -637,10 +637,10 @@
             "msg_whitelist_app_id_liquidation": {
               "type": "object",
               "required": [
-                "app_mapping_id"
+                "app_id"
               ],
               "properties": {
-                "app_mapping_id": {
+                "app_id": {
                   "type": "integer",
                   "format": "uint64",
                   "minimum": 0.0
@@ -659,10 +659,10 @@
             "msg_remove_whitelist_app_id_liquidation": {
               "type": "object",
               "required": [
-                "app_mapping_id"
+                "app_id"
               ],
               "properties": {
-                "app_mapping_id": {
+                "app_id": {
                   "type": "integer",
                   "format": "uint64",
                   "minimum": 0.0
@@ -681,7 +681,7 @@
             "msg_add_auction_params": {
               "type": "object",
               "required": [
-                "app_mapping_id",
+                "app_id",
                 "auction_duration_seconds",
                 "bid_duration_seconds",
                 "buffer",
@@ -693,7 +693,7 @@
                 "surplus_id"
               ],
               "properties": {
-                "app_mapping_id": {
+                "app_id": {
                   "type": "integer",
                   "format": "uint64",
                   "minimum": 0.0
@@ -754,20 +754,52 @@
               "type": "object",
               "required": [
                 "amount",
-                "app_mapping_id",
+                "app_id",
                 "from"
               ],
               "properties": {
                 "amount": {
                   "$ref": "#/definitions/Coin"
                 },
-                "app_mapping_id": {
+                "app_id": {
                   "type": "integer",
                   "format": "uint64",
                   "minimum": 0.0
                 },
                 "from": {
                   "type": "string"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "msg_add_e_s_m_trigger_params"
+          ],
+          "properties": {
+            "msg_add_e_s_m_trigger_params": {
+              "type": "object",
+              "required": [
+                "app_id",
+                "cool_off_period",
+                "target_value"
+              ],
+              "properties": {
+                "app_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "cool_off_period": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "target_value": {
+                  "$ref": "#/definitions/Coin"
                 }
               }
             }
@@ -829,13 +861,13 @@
     "Propose": {
       "type": "object",
       "required": [
-        "app_id",
+        "app_id_param",
         "description",
         "msgs",
         "title"
       ],
       "properties": {
-        "app_id": {
+        "app_id_param": {
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0

@@ -13,7 +13,7 @@ use crate::validation::{
     remove_whitelist_app_id_liquidation, remove_whitelist_app_id_vault_interest,
     remove_whitelist_asset_locker, update_locker_lsr, update_pairvault_stability,
     validate_threshold, whitelist_app_id_liquidation, whitelist_app_id_vault_interest,
-    whitelist_asset_locker_eligible, whitelist_asset_locker_rewards,
+    whitelist_asset_locker_eligible, whitelist_asset_locker_rewards,set_esm_params
 };
 use comdex_bindings::{ComdexMessages, ComdexQuery};
 #[cfg(not(feature = "library"))]
@@ -181,11 +181,11 @@ pub fn execute_propose(
             )?,
             ComdexMessages::MsgWhitelistAppIdLockerRewards {
                 app_id,
-                asset_id,
+                asset_ids,
             } => whitelist_asset_locker_rewards(
                 deps.as_ref(),
                 app_id,
-                asset_id,
+                asset_ids,
                 propose.app_id_param,
             )?,
             ComdexMessages::MsgWhitelistAppIdVaultInterest { app_id } => {
@@ -310,6 +310,13 @@ pub fn execute_propose(
                 dutch_id: _,
                 bid_duration_seconds: _,
             } => (),
+            ComdexMessages::MsgAddESMTriggerParams { 
+                app_id, 
+                target_value:_,
+                 cool_off_period:_ 
+            } => {
+                set_esm_params(deps.as_ref(), app_id, propose.app_id_param)?
+            },
             _ => return Err(ContractError::ProposalNotEligible {}),
         }
     }
