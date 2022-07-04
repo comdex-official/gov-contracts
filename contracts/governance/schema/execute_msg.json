@@ -1,0 +1,925 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExecuteMsg",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "propose"
+      ],
+      "properties": {
+        "propose": {
+          "type": "object",
+          "required": [
+            "propose"
+          ],
+          "properties": {
+            "propose": {
+              "$ref": "#/definitions/Propose"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "vote"
+      ],
+      "properties": {
+        "vote": {
+          "type": "object",
+          "required": [
+            "proposal_id",
+            "vote"
+          ],
+          "properties": {
+            "proposal_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "vote": {
+              "$ref": "#/definitions/Vote"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "execute"
+      ],
+      "properties": {
+        "execute": {
+          "type": "object",
+          "required": [
+            "proposal_id"
+          ],
+          "properties": {
+            "proposal_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "refund"
+      ],
+      "properties": {
+        "refund": {
+          "type": "object",
+          "required": [
+            "proposal_id"
+          ],
+          "properties": {
+            "proposal_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "deposit"
+      ],
+      "properties": {
+        "deposit": {
+          "type": "object",
+          "required": [
+            "proposal_id"
+          ],
+          "properties": {
+            "proposal_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "slash"
+      ],
+      "properties": {
+        "slash": {
+          "type": "object",
+          "required": [
+            "proposal_id"
+          ],
+          "properties": {
+            "proposal_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "Coin": {
+      "type": "object",
+      "required": [
+        "amount",
+        "denom"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "denom": {
+          "type": "string"
+        }
+      }
+    },
+    "ComdexMessages": {
+      "description": "A number of Custom messages that can call into the Comdex bindings",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "msg_white_list_asset_locker"
+          ],
+          "properties": {
+            "msg_white_list_asset_locker": {
+              "type": "object",
+              "required": [
+                "app_id",
+                "asset_id"
+              ],
+              "properties": {
+                "app_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "asset_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "msg_add_extended_pairs_vault"
+          ],
+          "properties": {
+            "msg_add_extended_pairs_vault": {
+              "type": "object",
+              "required": [
+                "app_id",
+                "asset_out_oracle_price",
+                "asset_out_price",
+                "closing_fee",
+                "debt_ceiling",
+                "debt_floor",
+                "draw_down_fee",
+                "is_stable_mint_vault",
+                "is_vault_active",
+                "liquidation_penalty",
+                "min_cr",
+                "min_usd_value_left",
+                "pair_id",
+                "pair_name",
+                "stability_fee"
+              ],
+              "properties": {
+                "app_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "asset_out_oracle_price": {
+                  "type": "boolean"
+                },
+                "asset_out_price": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "closing_fee": {
+                  "$ref": "#/definitions/Decimal"
+                },
+                "debt_ceiling": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "debt_floor": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "draw_down_fee": {
+                  "$ref": "#/definitions/Decimal"
+                },
+                "is_stable_mint_vault": {
+                  "type": "boolean"
+                },
+                "is_vault_active": {
+                  "type": "boolean"
+                },
+                "liquidation_penalty": {
+                  "$ref": "#/definitions/Decimal"
+                },
+                "min_cr": {
+                  "$ref": "#/definitions/Decimal"
+                },
+                "min_usd_value_left": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "pair_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "pair_name": {
+                  "type": "string"
+                },
+                "stability_fee": {
+                  "$ref": "#/definitions/Decimal"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "msg_set_collector_lookup_table"
+          ],
+          "properties": {
+            "msg_set_collector_lookup_table": {
+              "type": "object",
+              "required": [
+                "app_id",
+                "bid_factor",
+                "collector_asset_id",
+                "debt_lot_size",
+                "debt_threshold",
+                "locker_saving_rate",
+                "lot_size",
+                "secondary_asset_id",
+                "surplus_threshold"
+              ],
+              "properties": {
+                "app_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "bid_factor": {
+                  "$ref": "#/definitions/Decimal"
+                },
+                "collector_asset_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "debt_lot_size": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "debt_threshold": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "locker_saving_rate": {
+                  "$ref": "#/definitions/Decimal"
+                },
+                "lot_size": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "secondary_asset_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "surplus_threshold": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "msg_set_auction_mapping_for_app"
+          ],
+          "properties": {
+            "msg_set_auction_mapping_for_app": {
+              "type": "object",
+              "required": [
+                "app_id",
+                "asset_id",
+                "asset_out_oracle_price",
+                "asset_out_price",
+                "is_debt_auction",
+                "is_surplus_auction"
+              ],
+              "properties": {
+                "app_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "asset_id": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0.0
+                  }
+                },
+                "asset_out_oracle_price": {
+                  "type": "array",
+                  "items": {
+                    "type": "boolean"
+                  }
+                },
+                "asset_out_price": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0.0
+                  }
+                },
+                "is_debt_auction": {
+                  "type": "array",
+                  "items": {
+                    "type": "boolean"
+                  }
+                },
+                "is_surplus_auction": {
+                  "type": "array",
+                  "items": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "msg_whitelist_app_id_vault_interest"
+          ],
+          "properties": {
+            "msg_whitelist_app_id_vault_interest": {
+              "type": "object",
+              "required": [
+                "app_id"
+              ],
+              "properties": {
+                "app_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "msg_whitelist_app_id_locker_rewards"
+          ],
+          "properties": {
+            "msg_whitelist_app_id_locker_rewards": {
+              "type": "object",
+              "required": [
+                "app_id",
+                "asset_ids"
+              ],
+              "properties": {
+                "app_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "asset_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0.0
+                  }
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "msg_update_pairs_vault"
+          ],
+          "properties": {
+            "msg_update_pairs_vault": {
+              "type": "object",
+              "required": [
+                "app_id",
+                "closing_fee",
+                "debt_ceiling",
+                "debt_floor",
+                "draw_down_fee",
+                "ext_pair_id",
+                "liquidation_penalty",
+                "min_cr",
+                "min_usd_value_left",
+                "stability_fee"
+              ],
+              "properties": {
+                "app_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "closing_fee": {
+                  "$ref": "#/definitions/Decimal"
+                },
+                "debt_ceiling": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "debt_floor": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "draw_down_fee": {
+                  "$ref": "#/definitions/Decimal"
+                },
+                "ext_pair_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "liquidation_penalty": {
+                  "$ref": "#/definitions/Decimal"
+                },
+                "min_cr": {
+                  "$ref": "#/definitions/Decimal"
+                },
+                "min_usd_value_left": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "stability_fee": {
+                  "$ref": "#/definitions/Decimal"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "msg_update_collector_lookup_table"
+          ],
+          "properties": {
+            "msg_update_collector_lookup_table": {
+              "type": "object",
+              "required": [
+                "app_id",
+                "asset_id",
+                "bid_factor",
+                "debt_lot_size",
+                "debt_threshold",
+                "lot_size",
+                "lsr",
+                "surplus_threshold"
+              ],
+              "properties": {
+                "app_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "asset_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "bid_factor": {
+                  "$ref": "#/definitions/Decimal"
+                },
+                "debt_lot_size": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "debt_threshold": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "lot_size": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "lsr": {
+                  "$ref": "#/definitions/Decimal"
+                },
+                "surplus_threshold": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "msg_remove_whitelist_asset_locker"
+          ],
+          "properties": {
+            "msg_remove_whitelist_asset_locker": {
+              "type": "object",
+              "required": [
+                "app_id",
+                "asset_id"
+              ],
+              "properties": {
+                "app_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "asset_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "msg_remove_whitelist_app_id_vault_interest"
+          ],
+          "properties": {
+            "msg_remove_whitelist_app_id_vault_interest": {
+              "type": "object",
+              "required": [
+                "app_id"
+              ],
+              "properties": {
+                "app_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "msg_whitelist_app_id_liquidation"
+          ],
+          "properties": {
+            "msg_whitelist_app_id_liquidation": {
+              "type": "object",
+              "required": [
+                "app_id"
+              ],
+              "properties": {
+                "app_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "msg_remove_whitelist_app_id_liquidation"
+          ],
+          "properties": {
+            "msg_remove_whitelist_app_id_liquidation": {
+              "type": "object",
+              "required": [
+                "app_id"
+              ],
+              "properties": {
+                "app_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "msg_add_auction_params"
+          ],
+          "properties": {
+            "msg_add_auction_params": {
+              "type": "object",
+              "required": [
+                "app_id",
+                "auction_duration_seconds",
+                "bid_duration_seconds",
+                "buffer",
+                "cusp",
+                "debt_id",
+                "dutch_id",
+                "price_function_type",
+                "step",
+                "surplus_id"
+              ],
+              "properties": {
+                "app_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "auction_duration_seconds": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "bid_duration_seconds": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "buffer": {
+                  "$ref": "#/definitions/Decimal"
+                },
+                "cusp": {
+                  "$ref": "#/definitions/Decimal"
+                },
+                "debt_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "dutch_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "price_function_type": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "step": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "surplus_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "msg_burn_gov_tokens_for_app"
+          ],
+          "properties": {
+            "msg_burn_gov_tokens_for_app": {
+              "type": "object",
+              "required": [
+                "amount",
+                "app_id",
+                "from"
+              ],
+              "properties": {
+                "amount": {
+                  "$ref": "#/definitions/Coin"
+                },
+                "app_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "from": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "msg_add_e_s_m_trigger_params"
+          ],
+          "properties": {
+            "msg_add_e_s_m_trigger_params": {
+              "type": "object",
+              "required": [
+                "app_id",
+                "cool_off_period",
+                "target_value"
+              ],
+              "properties": {
+                "app_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "cool_off_period": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "target_value": {
+                  "$ref": "#/definitions/Coin"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Decimal": {
+      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+      "type": "string"
+    },
+    "Expiration": {
+      "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
+      "oneOf": [
+        {
+          "description": "AtHeight will expire when `env.block.height` >= height",
+          "type": "object",
+          "required": [
+            "at_height"
+          ],
+          "properties": {
+            "at_height": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "AtTime will expire when `env.block.time` >= time",
+          "type": "object",
+          "required": [
+            "at_time"
+          ],
+          "properties": {
+            "at_time": {
+              "$ref": "#/definitions/Timestamp"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Never will never expire. Used to express the empty variant",
+          "type": "object",
+          "required": [
+            "never"
+          ],
+          "properties": {
+            "never": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Propose": {
+      "type": "object",
+      "required": [
+        "app_id_param",
+        "description",
+        "msgs",
+        "title"
+      ],
+      "properties": {
+        "app_id_param": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "description": {
+          "type": "string"
+        },
+        "latest": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expiration"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "msgs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ComdexMessages"
+          }
+        },
+        "title": {
+          "type": "string"
+        }
+      }
+    },
+    "Timestamp": {
+      "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint64"
+        }
+      ]
+    },
+    "Uint128": {
+      "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+      "type": "string"
+    },
+    "Uint64": {
+      "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+      "type": "string"
+    },
+    "Vote": {
+      "type": "string",
+      "enum": [
+        "yes",
+        "no",
+        "abstain",
+        "veto"
+      ]
+    }
+  }
+}

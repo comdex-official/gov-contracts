@@ -1,0 +1,31 @@
+[package]
+name = "governance"
+version = "0.13.2"
+authors = ["Comdex"]
+edition = "2018"
+description = "Comdex Governance Contract"
+
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+backtraces = ["cosmwasm-std/backtraces","cosmwasm-vm/backtraces"]
+library = []
+
+[dependencies]
+cw-utils = { path = "../../packages/utils", version = "0.13.2" }
+cw2= "0.13.2"
+cw3 = { path = "../../packages/cw3", version = "0.13.2" }
+cw-storage-plus =  "0.13.2" 
+cosmwasm-std = { version = "1.0.0-beta8" }
+schemars = "0.8.1"
+serde = { version = "1.0.103", default-features = false, features = ["derive"] }
+thiserror = { version = "1.0.23" }
+comdex-bindings = { version = "0.6.0", path = "../../packages/bindings" }
+
+[dev-dependencies]
+cosmwasm-schema = { version = "1.0.0-beta8" }
+cw-multi-test = "0.13.4"
+cosmwasm-vm = {version="1.0.0"}
+

@@ -1,0 +1,2 @@
+cargo:rustc-env=TYPENUM_BUILD_CONSTS=/Users/subham/gov-contracts/target/wasm32-unknown-unknown/release/build/typenum-1464bab5f959aca9/out/consts.rs
+cargo:rustc-env=TYPENUM_BUILD_OP=/Users/subham/gov-contracts/target/wasm32-unknown-unknown/release/build/typenum-1464bab5f959aca9/out/op.rs

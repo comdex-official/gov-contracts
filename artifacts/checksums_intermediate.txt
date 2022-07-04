@@ -1,0 +1,1 @@
+1b6c88dd010e0bd0bb39a9eeb028447064c9143ad16ae653cbb861d6e963c872  target/wasm32-unknown-unknown/release/governance.wasm
