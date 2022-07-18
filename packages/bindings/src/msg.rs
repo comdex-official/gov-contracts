@@ -110,6 +110,8 @@ pub enum ComdexMessages {
         app_id: u64,
         target_value: Coin,
         cool_off_period: u64,
+        asset_id: Vec<u64>,
+        rates: Vec<u64>,
     },
 }
 
