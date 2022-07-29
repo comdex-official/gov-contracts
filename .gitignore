@@ -6,5 +6,7 @@ target/
 
 artifacts/
 
-cargo.tolock
+cargo.lock
+
+.DS_Store
 
