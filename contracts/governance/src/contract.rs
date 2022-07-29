@@ -575,8 +575,12 @@ pub fn execute_refund(
     let status = prop.current_status(&env.block);
 
     // Open and Pending proposal status are not eligible for refund
-    if [Status::Pending, Status::Open].iter().any(|x| *x == status) {
-        return Err(ContractError::NonPassedProposalRefund {});
+    if status ==Status::Pending{
+        return Err(ContractError::PendingProposal {});
+    }
+
+    if status==Status::Open{
+        return Err(ContractError::OpenProposal {});
     }
 
     //disallow slashed proposal
@@ -1078,7 +1082,7 @@ mod tests {
         let mut prop = PROPOSALS.load(&deps.storage, id).unwrap();
         assert_eq!(prop.status, Status::Pending);
         let g = execute_refund(deps.as_mut(), mock_env(), info.clone(), id);
-        assert_eq!(g, Err(ContractError::NonPassedProposalRefund {}));
+        assert_eq!(g, Err(ContractError::PendingProposal {}));
 
         // If status is Rejected Should get Slashedpropsal Error
         prop.status = Status::Rejected;
