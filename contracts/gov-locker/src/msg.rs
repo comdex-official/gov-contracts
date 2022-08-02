@@ -1,9 +1,17 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::PeriodWeight;
+
+/// Contains four locking periods and single unlock period. Each entry for t_i
+/// is tuple consistings of lock-in period and the weightage.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
-    pub count: i32,
+    pub t1: PeriodWeight,
+    pub t2: PeriodWeight,
+    pub t3: PeriodWeight,
+    pub t4: PeriodWeight,
+    pub unlock_period: u128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

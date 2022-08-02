@@ -1,14 +1,53 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "InstantiateMsg",
+  "description": "Contains four locking periods and single unlock period. Each entry for t_i is tuple consistings of lock-in period and the weightage.",
   "type": "object",
   "required": [
-    "count"
+    "t1",
+    "t2",
+    "t3",
+    "t4",
+    "unlock_period"
   ],
   "properties": {
-    "count": {
+    "t1": {
+      "$ref": "#/definitions/PeriodWeight"
+    },
+    "t2": {
+      "$ref": "#/definitions/PeriodWeight"
+    },
+    "t3": {
+      "$ref": "#/definitions/PeriodWeight"
+    },
+    "t4": {
+      "$ref": "#/definitions/PeriodWeight"
+    },
+    "unlock_period": {
       "type": "integer",
-      "format": "int32"
+      "format": "uint128",
+      "minimum": 0.0
+    }
+  },
+  "definitions": {
+    "PeriodWeight": {
+      "description": "`period` is the locking period in **seconds** and `weight` is used to calculate the amount of tokens returned. For example, if the weight is 0.25 and the deposited amount is 100DENOM, then 25uDENOM (100*0.25) is returned.",
+      "type": "object",
+      "required": [
+        "period",
+        "weight"
+      ],
+      "properties": {
+        "period": {
+          "type": "integer",
+          "format": "uint128",
+          "minimum": 0.0
+        },
+        "weight": {
+          "type": "number",
+          "format": "double"
+        }
+      }
     }
   }
 }
