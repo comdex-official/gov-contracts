@@ -1,7 +1,7 @@
+use crate::state::{LockingPeriod, VestingPeriod};
+use crate::PeriodWeight;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-
-use crate::PeriodWeight;
 
 /// Contains four locking periods and single unlock period. Each entry for t_i
 /// is tuple consistings of lock-in period and the weightage.
@@ -19,6 +19,8 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     Increment {},
     Reset { count: i32 },
+    SetPriod { _in: In },
+    LockTokens { token: i64, value: i64, _type: i64 },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -28,8 +30,7 @@ pub enum QueryMsg {
     GetCount {},
 }
 
-// We define a custom struct for each query response
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetCountResponse {
-    pub count: i32,
+pub struct In {
+    pub _vperiods: Vec<LockingPeriod>,
 }
