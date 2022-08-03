@@ -1,17 +1,17 @@
-use crate::state::LockingPeriod;
-use crate::state::PeriodWeight;
+use crate::state::{LockingPeriod, PeriodWeight, Vtoken};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// Contains four locking periods and single unlock period. Each entry for t_i
 /// is tuple consistings of lock-in period and the weightage.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub struct InstantiateMsg {
     pub t1: PeriodWeight,
     pub t2: PeriodWeight,
     pub t3: PeriodWeight,
     pub t4: PeriodWeight,
-    pub unlock_period: u128,
+    pub unlock_period: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -31,6 +31,11 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     /// Query the amount of vTokens issued
     IssuedTokens { address: String, token_id: u64 },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct IssuedTokensResponse {
+    pub vtokens: Vec<Vtoken>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

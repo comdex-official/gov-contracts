@@ -8,12 +8,14 @@ use std::time::SystemTime;
 /// calculate the amount of tokens returned. For example, if the weight is 0.25
 /// and the deposited amount is 100DENOM, then 25uDENOM (100*0.25) is returned.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub struct PeriodWeight {
-    pub period: u128,
+    pub period: u64,
     pub weight: f64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum LockingPeriod {
     T1,
     T2,
@@ -25,6 +27,7 @@ pub enum LockingPeriod {
 /// in the vesting period and *Released* means the tokens have completed their
 /// vesting period and have been unlocked.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum Status {
     /// When the tokens are in the vesting period.
     Locked,
@@ -38,6 +41,7 @@ pub enum Status {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub struct Vtoken {
     /// amount of token being locked
     pub token: u64,
@@ -55,6 +59,7 @@ pub struct Vtoken {
 
 /// NFT struct for holding the token info
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub struct TokenInfo {
     /// Owner of the NFT
     pub owner: Addr,
@@ -65,12 +70,14 @@ pub struct TokenInfo {
 
 /// Contains the four locking periods and the unlock period.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub struct State {
     pub t1: PeriodWeight,
     pub t2: PeriodWeight,
     pub t3: PeriodWeight,
     pub t4: PeriodWeight,
-    pub unlock_period: u128,
+    pub unlock_period: u64,
+    pub num_tokens: u64,
 }
 
 pub const STATE: Item<State> = Item::new("state");
