@@ -42,9 +42,11 @@ pub enum ComdexMessages {
         app_id: u64,
         asset_id: Vec<u64>,
         is_surplus_auction: Vec<bool>,
+        is_distributor: Vec<bool>,
         is_debt_auction: Vec<bool>,
         asset_out_oracle_price: Vec<bool>,
         asset_out_price: Vec<u64>,
+
     },
     MsgWhitelistAppIdVaultInterest {
         app_id: u64,
@@ -110,6 +112,8 @@ pub enum ComdexMessages {
         app_id: u64,
         target_value: Coin,
         cool_off_period: u64,
+        asset_id: Vec<u64>,
+        rates: Vec<u64>,
     },
 }
 

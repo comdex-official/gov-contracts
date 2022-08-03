@@ -264,6 +264,7 @@ pub fn execute_propose(
                 is_debt_auction: _,
                 asset_out_oracle_price: _,
                 asset_out_price: _,
+                is_distributor:_,
             } => auction_mapping_for_app(deps.as_ref(), app_id, propose.app_id_param)?,
 
             ComdexMessages::MsgUpdateCollectorLookupTable {
@@ -313,7 +314,9 @@ pub fn execute_propose(
             ComdexMessages::MsgAddESMTriggerParams { 
                 app_id, 
                 target_value:_,
-                 cool_off_period:_ 
+                 cool_off_period:_ ,
+                 asset_id:_,
+                 rates:_,
             } => {
                 set_esm_params(deps.as_ref(), app_id, propose.app_id_param)?
             },
