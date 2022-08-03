@@ -2,7 +2,7 @@ use cosmwasm_std::{entry_point, to_binary, Binary, Deps, Env, StdError, StdResul
 
 // use crate::error::ContractError;
 use crate::msg::{IssuedTokensResponse, QueryMsg};
-use crate::state::VTOKENS;
+use crate::state::TOKENS;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
@@ -20,7 +20,7 @@ fn query_issued_tokens(
     token_id: u64,
 ) -> StdResult<IssuedTokensResponse> {
     let owner = deps.api.addr_validate(&address[..])?;
-    let token = VTOKENS.may_load(deps.storage, (owner, token_id))?;
+    let token = TOKENS.may_load(deps.storage, owner)?;
 
     match token {
         Some(val) => Ok(IssuedTokensResponse {

@@ -1,8 +1,9 @@
-use cosmwasm_std::Addr;
+use cosmwasm_std::Timestamp;
+use cosmwasm_std::{Addr, Coin};
 use cw_storage_plus::{Item, Map};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::time::SystemTime;
+// use std::time::SystemTime;
 
 /// `period` is the locking period in **seconds** and `weight` is used to
 /// calculate the amount of tokens returned. For example, if the weight is 0.25
@@ -44,15 +45,15 @@ pub enum Status {
 #[serde(rename_all = "snake_case")]
 pub struct Vtoken {
     /// amount of token being locked
-    pub token: u64,
-    /// amount of vtoken released
-    pub vtoken: u64,
+    pub token: Coin,
+    /// amount of vtoken created
+    pub vtoken: Coin,
     /// Locking period i.e. T1..4
     pub period: LockingPeriod,
     /// Time at which the tokens were locked
-    pub start_time: SystemTime,
+    pub start_time: Timestamp,
     /// Point in time after which the tokens can be unlocked
-    pub end_time: SystemTime,
+    pub end_time: Timestamp,
     /// Current status of the tokens
     pub status: Status,
 }
@@ -79,6 +80,7 @@ pub struct State {
     pub unlock_period: u64,
     pub num_tokens: u64,
 }
+// Need to have a mapping for the amount of total vtoken in circulation.
 
 pub const STATE: Item<State> = Item::new("state");
-pub const VTOKENS: Map<(Addr, u64), TokenInfo> = Map::new("vtokens");
+pub const TOKENS: Map<Addr, TokenInfo> = Map::new("tokens");
