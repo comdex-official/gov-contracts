@@ -1,5 +1,5 @@
-use crate::state::{LockingPeriod, VestingPeriod};
-use crate::PeriodWeight;
+use crate::state::LockingPeriod;
+use crate::state::PeriodWeight;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -17,17 +17,20 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    Increment {},
-    Reset { count: i32 },
-    SetPriod { _in: In },
-    LockTokens { token: i64, value: i64, _type: i64 },
+    /// Lock the amount of tokens for the given time period
+    Lock {
+        app_id: u64,
+        locking_period: LockingPeriod,
+    },
+    /// Unlocks the locked tokens after meeting certain criteria
+    Unlock { app_id: u64, amount: u64 },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    // GetCount returns the current count as a json-encoded number
-    GetCount {},
+    /// Query the amount of vTokens issued
+    IssuedTokens { address: String, token_id: u64 },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

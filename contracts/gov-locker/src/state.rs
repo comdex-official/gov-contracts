@@ -4,27 +4,13 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::time::SystemTime;
 
-// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Copy, JsonSchema)]
-// pub enum VestingPeriod {
-//     SHORT,
-//     MEDIUM,
-//     LONG,
-// }
-
-// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Copy, JsonSchema)]
-// pub struct LockingPeriod {
-//     pub _type: VestingPeriod,
-//     pub _time: SystemTime,
-//     pub _weight: i64,
-// }
-
 /// `period` is the locking period in **seconds** and `weight` is used to
 /// calculate the amount of tokens returned. For example, if the weight is 0.25
 /// and the deposited amount is 100DENOM, then 25uDENOM (100*0.25) is returned.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct PeriodWeight {
-    period: u128,
-    weight: f64,
+    pub period: u128,
+    pub weight: f64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -40,11 +26,18 @@ pub enum LockingPeriod {
 /// vesting period and have been unlocked.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub enum Status {
+    /// When the tokens are in the vesting period.
     Locked,
-    Released,
+    /// When the tokens have completed the locking period(T1..4) but not the
+    /// unlock period (State.unlock_period). The owner has to wait for the
+    /// unlock period to be over, before retrieving their tokens.
+    Unlocking,
+    /// When the token have completed both the locking period and the unlock
+    /// period. The owner is free to retrieve their tokens.
+    Unlocked,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Vtoken {
     /// amount of token being locked
     pub token: u64,
@@ -61,17 +54,14 @@ pub struct Vtoken {
 }
 
 /// NFT struct for holding the token info
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TokenInfo {
     /// Owner of the NFT
-    owner: Addr,
-    /// Amount of vtokens issued
-    vtokens: Vec<Vtoken>,
-    token_id: u64,
+    pub owner: Addr,
+    /// vtokens issued
+    pub vtokens: Vec<Vtoken>,
+    pub token_id: u64,
 }
-
-// pub const LOCKED: Item<Locked> = Item::new("Locked");
-// pub const VPERIOD: Map<i64, LockingPeriod> = Map::new("VestingPeriods");
 
 /// Contains the four locking periods and the unlock period.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
