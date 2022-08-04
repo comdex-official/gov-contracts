@@ -1,6 +1,6 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Coin, Deps, DepsMut, Env, MessageInfo, Response};
+use cosmwasm_std::{Coin, DepsMut, Env, MessageInfo, Response};
 use cw2::set_contract_version;
 
 use crate::error::ContractError;
@@ -112,35 +112,9 @@ pub fn handle_lock_nft(
             TOKENS.save(deps.storage, info.sender, &new_nft)?;
         }
     }
-
-    if lockdata.status == Status::Locked && lockdata.status != Status::Released {
-        let starttime = SystemTime::now();
-        let _lcoked = LockedData {
-            address,
-            token_id: token_id.try_into().unwrap(),
-            locking_Coin: lockingtoken,
-            period: _type,
-            start_time: starttime,
-            end_time: starttime.add(_lockperiod.locking_period),
-            status: Status::Locked,
-        };
-        LOCKDATA.save(deps.storage, address, &_lcoked);
-        LDATA.insert(address, (token_id, _lcoked));
-    } else {
-        let start_time = SystemTime::now();
-        let _lcoked = LockedData {
-            address,
-            token_id: token_id.try_into().unwrap(),
-            locking_Coin: lockingtoken,
-            period: _type,
-            start_time: lockdata.start_time,
-            end_time: lockdata.end_time.add(_lockperiod.locking_period),
-            status: Status::Locked,
-        };
-        LOCKDATA.save(deps.storage, address, &_lcoked);
-        LDATA.insert(address, (token_id, _lcoked));
-    }
-    Ok(Response::new())
+    Ok(Response::new()
+        .add_attribute("action", "lock")
+        .add_attribute("from", info.sender))
 }
 
 fn create_vtoken(
@@ -155,13 +129,13 @@ fn create_vtoken(
     vdenom.push_str(&info.funds[0].denom[..]);
 
     // !------- Uint128 -> f64? -------!
-    let amount = weight * info.funds[0].amount.into();
+    let amount: f64 = weight * info.funds[0].amount.into();
 
     Vtoken {
         token: info.funds[0],
         vtoken: Coin {
             denom: vdenom,
-            amount,
+            amount: amount.into(),
         },
         period: locking_period,
         start_time: env.block.time,
