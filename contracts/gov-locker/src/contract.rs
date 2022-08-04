@@ -1,11 +1,16 @@
+use std::ops::AddAssign;
+
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Coin, DepsMut, Env, MessageInfo, Response};
+use cosmwasm_std::{Coin, DepsMut, Env, MessageInfo, Response, Uint128};
 use cw2::set_contract_version;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg};
-use crate::state::{LockingPeriod, PeriodWeight, State, Status, TokenInfo, Vtoken, STATE, TOKENS};
+use crate::state::{
+    LockingPeriod, PeriodWeight, State, Status, TokenInfo, Vtoken, LOCKED, STATE, SUPPLY, TOKENS,
+    UNLOCKED, UNLOCKING,
+};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "gov-locker";
@@ -94,6 +99,30 @@ pub fn handle_lock_nft(
                 TOKENS.save(deps.storage, info.sender, &val);
             } else {
                 //------- What to do if the period already exists? -------
+                let mut remaining: Vec<Vtoken> = val
+                    .vtokens
+                    .into_iter()
+                    .filter(|element| {
+                        !(element.token.denom == info.funds[0].denom
+                            && element.period == locking_period)
+                    })
+                    .collect();
+
+                let vtoken = res[0];
+                // Increase the token count
+                vtoken.token.amount.add_assign(info.funds[0].clone().amount);
+                // Increase the vtoken count
+                vtoken
+                    .vtoken
+                    .amount
+                    .add_assign(weight * info.funds[0].amount);
+                // The new start time will be current block time, i.e. the prev
+                // tokens will also unlock with the current tokens and not before
+                vtoken.start_time = env.block.time;
+                vtoken.end_time = env.block.time.plus_seconds(period);
+                remaining.push(vtoken);
+                val.vtokens = remaining;
+                TOKENS.save(deps.storage, info.sender, &val);
             }
         }
         None => {
@@ -129,13 +158,13 @@ fn create_vtoken(
     vdenom.push_str(&info.funds[0].denom[..]);
 
     // !------- Uint128 -> f64? -------!
-    let amount: f64 = weight * info.funds[0].amount.into();
+    let amount: f64 = weight * info.funds[0].amount.u128().into();
 
     Vtoken {
         token: info.funds[0],
         vtoken: Coin {
             denom: vdenom,
-            amount: amount.into(),
+            amount: Uint128::from(amount),
         },
         period: locking_period,
         start_time: env.block.time,

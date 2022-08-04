@@ -80,7 +80,17 @@ pub struct State {
     pub unlock_period: u64,
     pub num_tokens: u64,
 }
-// Need to have a mapping for the amount of total vtoken in circulation.
 
+// The following mappings are as follows
+// Holds the internal state
 pub const STATE: Item<State> = Item::new("state");
+// Owner to NFT
 pub const TOKENS: Map<Addr, TokenInfo> = Map::new("tokens");
+// Owner to Locked tokens
+pub const LOCKED: Map<Addr, Vec<Coin>> = Map::new("locked");
+// Owner to unlocking tokens, i.e. tokens in unlock_period
+pub const UNLOCKING: Map<Addr, Vec<Coin>> = Map::new("unlocking");
+// Owner to unlocked tokens, i.e. token that can be withdrawn
+pub const UNLOCKED: Map<Addr, Vec<Coin>> = Map::new("unlocked");
+// Total supply of each vtoken
+pub const SUPPLY: Map<Coin, u128> = Map::new("supply");
