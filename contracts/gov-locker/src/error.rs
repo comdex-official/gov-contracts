@@ -13,13 +13,16 @@ pub enum ContractError {
     InsufficientFunds { funds: u128 },
 
     #[error("The locking period is still active.")]
-    TimeNotOvered { },
+    TimeNotOvered {},
 
     #[error("The VToken is Allready Unlocked.")]
-    AllreadyUnLocked { },
+    AllreadyUnLocked {},
 
     #[error("The VToken is in Locked State.")]
-    NotUnlocked { },
+    NotUnlocked {},
+
+    #[error("The token is not in locked state")]
+    NotLocked {},
 
     #[error("Custom Error val: {val:?}")]
     CustomError { val: String },

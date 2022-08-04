@@ -1,3 +1,6 @@
+// !-----ONLY USE DURING TESTING, NOT OTHERWISE-----!
+// #![allow(unused_imports, unused_variables, dead_code)]
+
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::{
     entry_point, BankMsg, Coin, Decimal, DepsMut, Env, MessageInfo, Response, Storage, Timestamp,
@@ -57,14 +60,14 @@ pub fn execute(
             app_id,
             locking_period,
         } => handle_lock_nft(deps, env, info, app_id, locking_period),
-        ExecuteMsg::Unlock { app_id, denom } => {
-            handle_unlock_nft(deps, &env, msg, info, app_id, denom)
-        }
-        ExecuteMsg::Withdraw {
-            app_id,
-            denom,
-            amount,
-        } => withdraw(deps, &env, info, denom, amount),
+        // ExecuteMsg::Unlock { app_id, denom } => {
+        //     handle_unlock_nft(deps, &env, msg, info, app_id, denom)
+        // }
+        // ExecuteMsg::Withdraw {
+        //     app_id,
+        //     denom,
+        //     amount,
+        // } => withdraw(deps, &env, info, denom, amount),
         _ => Err(ContractError::CustomError {
             val: String::from("Not implemented"),
         }),
@@ -80,12 +83,16 @@ pub fn handle_lock_nft(
     locking_period: LockingPeriod,
 ) -> Result<Response, ContractError> {
     // Only allow a single denomination
-    if info.funds.len() == 0 {
+    if info.funds.is_empty() {
         return Err(ContractError::InsufficientFunds { funds: 0 });
     } else if info.funds.len() > 1 {
         return Err(ContractError::CustomError {
             val: String::from("Multiple denominations are not supported as yet."),
         });
+    }
+
+    if info.funds[0].amount.is_zero() {
+        return Err(ContractError::InsufficientFunds { funds: 0 });
     }
 
     let mut state = STATE.load(deps.storage)?;
@@ -115,12 +122,18 @@ pub fn handle_lock_nft(
                     weight,
                 )?;
                 token.vtokens.push(new_vtoken);
-                TOKENS.save(deps.storage, info.sender.clone(), &token);
+                TOKENS.save(deps.storage, info.sender.clone(), &token)?;
             } else {
                 // !------- BUG -------!
                 // !------- Need to check if the tokens are Locked only then proceed -------!
 
                 let mut vtoken = res[0].to_owned();
+
+                if let Status::Locked = vtoken.status {
+                    ()
+                } else {
+                    return Err(ContractError::NotLocked {});
+                }
 
                 let mut remaining: Vec<Vtoken> = token
                     .vtokens
@@ -147,7 +160,7 @@ pub fn handle_lock_nft(
                 remaining.push(vtoken);
                 token.vtokens = remaining;
 
-                TOKENS.save(deps.storage, info.sender.clone(), &token);
+                TOKENS.save(deps.storage, info.sender.clone(), &token)?;
             }
         }
         None => {
@@ -172,7 +185,7 @@ pub fn handle_lock_nft(
                 deps.storage,
                 (info.sender.clone(), &info.funds[0].denom),
                 &new_vtoken,
-            );
+            )?;
 
             new_nft.vtokens.push(new_vtoken);
             TOKENS.save(deps.storage, info.sender.clone(), &new_nft)?;
@@ -239,75 +252,75 @@ fn update_locked(
     Ok(())
 }
 
-pub fn handle_unlock_nft(
-    deps: DepsMut,
-    env: &Env,
-    msg: ExecuteMsg,
-    info: MessageInfo,
-    app_id: u64,
-    denom: String,
-) -> Result<Response, ContractError> {
-    let mut state = STATE.load(deps.storage)?;
-    let Vtoken = VTOKENS.load(deps.storage, (info.sender, &denom)).unwrap();
+// pub fn handle_unlock_nft(
+//     deps: DepsMut,
+//     env: &Env,
+//     msg: ExecuteMsg,
+//     info: MessageInfo,
+//     app_id: u64,
+//     denom: String,
+// ) -> Result<Response, ContractError> {
+//     let mut state = STATE.load(deps.storage)?;
+//     let Vtoken = VTOKENS.load(deps.storage, (info.sender, &denom)).unwrap();
 
-    if Vtoken.status == Status::Unlocked {
-        ContractError::AllreadyUnLocked {};
-    }
-    let t = Timestamp::from_seconds(state.unlock_period).seconds();
+//     if Vtoken.status == Status::Unlocked {
+//         ContractError::AllreadyUnLocked {};
+//     }
+//     let t = Timestamp::from_seconds(state.unlock_period).seconds();
 
-    if Vtoken.end_time < env.block.time
-        && Vtoken.end_time.seconds() + state.unlock_period > env.block.time.seconds()
-    {
-        Vtoken.status = Status::Unlocking;
-        // UNLOCKING.save(deps.storage, info.sender, data)
-    } else if Vtoken.end_time.seconds() + state.unlock_period < env.block.time.seconds() {
-        Vtoken.status = Status::Unlocked
-    } else {
-        ContractError::TimeNotOvered {};
-    }
+//     if Vtoken.end_time < env.block.time
+//         && Vtoken.end_time.seconds() + state.unlock_period > env.block.time.seconds()
+//     {
+//         Vtoken.status = Status::Unlocking;
+//         // UNLOCKING.save(deps.storage, info.sender, data)
+//     } else if Vtoken.end_time.seconds() + state.unlock_period < env.block.time.seconds() {
+//         Vtoken.status = Status::Unlocked
+//     } else {
+//         ContractError::TimeNotOvered {};
+//     }
 
-    Ok(Response::new()
-        .add_attribute("action", "unlock")
-        .add_attribute("from", info.sender))
-}
+//     Ok(Response::new()
+//         .add_attribute("action", "unlock")
+//         .add_attribute("from", info.sender))
+// }
 
-pub fn withdraw(
-    deps: DepsMut,
-    env: &Env,
-    info: MessageInfo,
-    denom: String,
-    amount: u64,
-) -> Result<Response, ContractError> {
-    let Vtoken = VTOKENS.load(deps.storage, (info.sender, &denom)).unwrap();
+// pub fn withdraw(
+//     deps: DepsMut,
+//     env: &Env,
+//     info: MessageInfo,
+//     denom: String,
+//     amount: u64,
+// ) -> Result<Response, ContractError> {
+//     let Vtoken = VTOKENS.load(deps.storage, (info.sender, &denom)).unwrap();
 
-    if Vtoken.status != Status::Unlocked {
-        ContractError::NotUnlocked {};
-    }
+//     if Vtoken.status != Status::Unlocked {
+//         ContractError::NotUnlocked {};
+//     }
 
-    if Vtoken.token.amount < Uint128::from(amount) {
-        ContractError::InsufficientFunds {
-            funds: Vtoken.token.amount.u128(),
-        };
-    }
+//     if Vtoken.token.amount < Uint128::from(amount) {
+//         ContractError::InsufficientFunds {
+//             funds: Vtoken.token.amount.u128(),
+//         };
+//     }
 
-    let withdraw_amount = Vtoken.token.amount.sub(Uint128::from(amount));
-    Vtoken.token.amount.sub_assign(Uint128::from(amount));
+//     let withdraw_amount = Vtoken.token.amount.sub(Uint128::from(amount));
+//     Vtoken.token.amount.sub_assign(Uint128::from(amount));
 
-    if Vtoken.token.amount.is_zero() {
-        VTOKENS.remove(deps.storage, (info.sender, &denom));
-    }
+//     if Vtoken.token.amount.is_zero() {
+//         VTOKENS.remove(deps.storage, (info.sender, &denom));
+//     }
 
-    Ok(Response::new()
-        .add_message(BankMsg::Send {
-            to_address: info.sender.to_string(),
-            amount: vec![Coin {
-                denom,
-                amount: withdraw_amount,
-            }],
-        })
-        .add_attribute("action", "Withdraw")
-        .add_attribute("Recipent", info.sender))
-}
+//     Ok(Response::new()
+//         .add_message(BankMsg::Send {
+//             to_address: info.sender.to_string(),
+//             amount: vec![Coin {
+//                 denom,
+//                 amount: withdraw_amount,
+//             }],
+//         })
+//         .add_attribute("action", "Withdraw")
+//         .add_attribute("Recipent", info.sender))
+// }
 
 fn get_period(state: State, locking_period: LockingPeriod) -> Result<PeriodWeight, ContractError> {
     Ok(match locking_period {
@@ -318,50 +331,115 @@ fn get_period(state: State, locking_period: LockingPeriod) -> Result<PeriodWeigh
     })
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use cosmwasm_std::coins;
-//     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::{coins, Addr};
 
-//     const DENOM: &str = "TKN";
+    const DENOM: &str = "TKN";
 
-//     /// Returns default InstantiateMsg with each value in seconds.
-//     /// - t1 is 1 week (7*24*60*60), similarly, t2 is 2 weeks, t3 is 3 weeks
-//     /// and t4 is 4 weeks.
-//     /// - unlock_period is 1 week
-//     fn init_msg() -> InstantiateMsg {
-//         InstantiateMsg {
-//             t1: PeriodWeight {
-//                 period: 604_800,
-//                 weight: 0.25f64,
-//             },
-//             t2: PeriodWeight {
-//                 period: 1_209_600,
-//                 weight: 0.50f64,
-//             },
-//             t3: PeriodWeight {
-//                 period: 1_814_400,
-//                 weight: 0.75f64,
-//             },
-//             t4: PeriodWeight {
-//                 period: 2_419_200,
-//                 weight: 1.0f64,
-//             },
-//             unlock_period: 604_800,
-//         }
-//     }
+    /// Returns default InstantiateMsg with each value in seconds.
+    /// - t1 is 1 week (7*24*60*60), similarly, t2 is 2 weeks, t3 is 3 weeks
+    /// and t4 is 4 weeks.
+    /// - unlock_period is 1 week
+    fn init_msg() -> InstantiateMsg {
+        InstantiateMsg {
+            t1: PeriodWeight {
+                period: 604_800,
+                weight: Decimal::from_atomics(Uint128::new(25), 2).unwrap(),
+            },
+            t2: PeriodWeight {
+                period: 1_209_600,
+                weight: Decimal::from_atomics(Uint128::new(50), 2).unwrap(),
+            },
+            t3: PeriodWeight {
+                period: 1_814_400,
+                weight: Decimal::from_atomics(Uint128::new(75), 2).unwrap(),
+            },
+            t4: PeriodWeight {
+                period: 2_419_200,
+                weight: Decimal::from_atomics(Uint128::new(100), 2).unwrap(),
+            },
+            unlock_period: 604_800,
+        }
+    }
 
-//     #[test]
-//     fn proper_initialization() {
-//         let env = mock_env();
-//         let mut deps = mock_dependencies();
-//         let info = mock_info("sender", &coins(0, &DENOM.to_string()));
+    #[test]
+    fn proper_initialization() {
+        let env = mock_env();
+        let mut deps = mock_dependencies();
+        let info = mock_info("sender", &coins(0, DENOM.to_string()));
 
-//         let msg = init_msg();
+        let msg = init_msg();
+        assert_eq!(msg.t1.weight.to_string(), "0.25");
 
-//         // let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-//         // assert_eq!(res.messages.len(), 0);
-//         // assert_eq!(res.attributes.len(), 2);
-//     }
-// }
+        let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        assert_eq!(res.messages.len(), 0);
+        assert_eq!(res.attributes.len(), 2);
+
+        let state = STATE.load(&deps.storage).unwrap();
+        assert_eq!(state.t1, msg.t1);
+        assert_eq!(state.t3, msg.t3);
+    }
+
+    #[test]
+    fn lock() {
+        // mock values
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("sender", &coins(0, DENOM.to_string()));
+
+        let imsg = init_msg();
+        instantiate(deps.as_mut(), env.clone(), info.clone(), imsg.clone()).unwrap();
+
+        let msg = ExecuteMsg::Lock {
+            app_id: 12,
+            locking_period: LockingPeriod::T1,
+        };
+
+        // This should throw an error because the amount is zero
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
+        match res {
+            ContractError::InsufficientFunds { .. } => {}
+            e => panic!("{:?}", e),
+        };
+
+        // Successful execution
+        let info = mock_info("user1", &coins(100, DENOM.to_string()));
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+        assert_eq!(res.messages.len(), 0);
+        assert_eq!(res.attributes.len(), 2);
+
+        let sender_addr = Addr::unchecked("user1");
+        let token = TOKENS.load(&deps.storage, sender_addr.clone()).unwrap();
+
+        assert_eq!(token.owner, sender_addr.clone());
+        assert_eq!(token.token_id, 1u64);
+        assert_eq!(token.vtokens.len(), 1);
+        // .token should be the same as locked tokens
+        assert_eq!(
+            token.vtokens[0].token,
+            Coin {
+                amount: Uint128::from(100u32),
+                denom: DENOM.to_string()
+            }
+        );
+        // .vtoken should be correct Vtoken released
+        assert_eq!(
+            token.vtokens[0].vtoken,
+            Coin {
+                amount: Uint128::from(25u32),
+                denom: String::from("vTKN")
+            }
+        );
+        assert_eq!(token.vtokens[0].start_time, env.block.time);
+        assert_eq!(
+            token.vtokens[0].end_time,
+            env.block.time.plus_seconds(imsg.t1.period)
+        );
+        assert_eq!(token.vtokens[0].period, LockingPeriod::T1);
+        assert_eq!(token.vtokens[0].status, Status::Locked);
+    }
+}
