@@ -1,5 +1,5 @@
 use crate::state::{LockingPeriod, PeriodWeight, Vtoken};
-use cosmwasm_std::Timestamp;
+use cosmwasm_std::{Timestamp, Coin, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -42,6 +42,9 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     /// Query the amount of vTokens issued
     IssuedTokens { address: String, token_id: u64 },
+    GetUnlockedTokens{
+        denom:String
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -49,6 +52,9 @@ pub struct IssuedTokensResponse {
     pub vtokens: Vec<Vtoken>,
 }
 
+pub struct GetUnlockedTokenRespose{
+    pub tokens:Uint128
+}
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct In {
     pub _vperiods: Vec<LockingPeriod>,
