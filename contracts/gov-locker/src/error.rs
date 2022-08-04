@@ -14,6 +14,8 @@ pub enum ContractError {
 
     #[error("The locking period is still active.")]
     TimeNotOvered { },
+    #[error("The VToken is Allready Unlocked.")]
+    AllreadyUnLocked { },
 
     #[error("Custom Error val: {val:?}")]
     CustomError { val: String },

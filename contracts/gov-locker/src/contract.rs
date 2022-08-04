@@ -183,10 +183,13 @@ pub fn handle_unlock_nft(
     denom: String,
     tokenId: u64,
 ) -> Result<Response, ContractError> {
-    let nft = TOKENS.may_load(deps.storage, info.sender).unwrap();
     let Vtoken = VTOKENS
         .load(deps.storage, (info.sender, tokenId, &denom))
         .unwrap();
+
+    if Vtoken.status == Status::Unlocked {
+        ContractError::AllreadyUnLocked {  };
+    }
 
     if Vtoken.end_time < env.block.time {
         Vtoken.status = Status::Unlocked
