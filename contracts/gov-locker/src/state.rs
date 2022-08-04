@@ -84,3 +84,4 @@ pub struct State {
 
 pub const STATE: Item<State> = Item::new("state");
 pub const TOKENS: Map<Addr, TokenInfo> = Map::new("tokens");
+pub const VTOKENS:Map<(Addr,u64,&str),Vtoken> =Map::new("Vtokens by NFT");

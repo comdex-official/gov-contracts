@@ -1,11 +1,13 @@
+use std::env;
+
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Coin, DepsMut, Env, MessageInfo, Response};
+use cosmwasm_std::{Coin, DepsMut, Env, MessageInfo, Response, Timestamp};
 use cw2::set_contract_version;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg};
-use crate::state::{LockingPeriod, PeriodWeight, State, Status, TokenInfo, Vtoken, STATE, TOKENS};
+use crate::state::{LockingPeriod, PeriodWeight, State, Status, TokenInfo, Vtoken, STATE, TOKENS, VTOKENS};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "gov-locker";
@@ -142,6 +144,31 @@ fn create_vtoken(
         end_time: env.block.time.plus_seconds(period),
         status: Status::Locked,
     }
+}
+
+
+pub fn handle_unlock_nft(
+    deps: DepsMut,
+    env: &Env,
+    msg: ExecuteMsg,
+    info: MessageInfo,
+    app_id: u64,
+    denom:String,
+    tokenId:u64
+)->Result<Response,ContractError>{
+    let nft = TOKENS.may_load(deps.storage, info.sender).unwrap();
+    let Vtoken =VTOKENS.load(deps.storage,(info.sender,tokenId,&denom)).unwrap();
+
+    if Vtoken.end_time < env.block.time{
+        Vtoken.status = Status::Unlocked
+    }else{
+        ContractError::TimeNotOvered {  };
+    }
+
+    Ok(Response::new()
+    .add_attribute("action", "unlock")
+    .add_attribute("from", info.sender))
+
 }
 
 pub fn getPeriod(
