@@ -94,3 +94,4 @@ pub const UNLOCKING: Map<Addr, Vec<Coin>> = Map::new("unlocking");
 pub const UNLOCKED: Map<Addr, Vec<Coin>> = Map::new("unlocked");
 // Total supply of each vtoken
 pub const SUPPLY: Map<Coin, u128> = Map::new("supply");
+pub const VTOKENS: Map<(Addr, u64, &str), Vtoken> = Map::new("Vtokens by NFT");

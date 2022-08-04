@@ -12,6 +12,9 @@ pub enum ContractError {
     #[error("Insufficient funds were sent: {funds}")]
     InsufficientFunds { funds: u128 },
 
+    #[error("The locking period is still active.")]
+    TimeNotOvered { },
+
     #[error("Custom Error val: {val:?}")]
     CustomError { val: String },
     // Add any other custom errors you like here.

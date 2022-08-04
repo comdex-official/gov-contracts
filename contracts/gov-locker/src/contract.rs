@@ -1,15 +1,15 @@
-use std::ops::AddAssign;
-
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Coin, DepsMut, Env, MessageInfo, Response, Uint128};
+use cosmwasm_std::{Coin, DepsMut, Env, MessageInfo, Response, Timestamp};
 use cw2::set_contract_version;
+use std::env;
+use std::ops::AddAssign;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg};
 use crate::state::{
     LockingPeriod, PeriodWeight, State, Status, TokenInfo, Vtoken, LOCKED, STATE, SUPPLY, TOKENS,
-    UNLOCKED, UNLOCKING,
+    UNLOCKED, UNLOCKING, VTOKENS,
 };
 
 // version info for migration info
@@ -112,6 +112,7 @@ pub fn handle_lock_nft(
                 // Increase the token count
                 vtoken.token.amount.add_assign(info.funds[0].clone().amount);
                 // Increase the vtoken count
+                // !------- f64 * Uint128 -------!
                 vtoken
                     .vtoken
                     .amount
@@ -171,6 +172,31 @@ fn create_vtoken(
         end_time: env.block.time.plus_seconds(period),
         status: Status::Locked,
     }
+}
+
+pub fn handle_unlock_nft(
+    deps: DepsMut,
+    env: &Env,
+    msg: ExecuteMsg,
+    info: MessageInfo,
+    app_id: u64,
+    denom: String,
+    tokenId: u64,
+) -> Result<Response, ContractError> {
+    let nft = TOKENS.may_load(deps.storage, info.sender).unwrap();
+    let Vtoken = VTOKENS
+        .load(deps.storage, (info.sender, tokenId, &denom))
+        .unwrap();
+
+    if Vtoken.end_time < env.block.time {
+        Vtoken.status = Status::Unlocked
+    } else {
+        ContractError::TimeNotOvered {};
+    }
+
+    Ok(Response::new()
+        .add_attribute("action", "unlock")
+        .add_attribute("from", info.sender))
 }
 
 pub fn getPeriod(
