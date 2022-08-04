@@ -1,9 +1,9 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Coin, DepsMut, Env, MessageInfo, Response, Timestamp};
+use cosmwasm_std::{Coin, DepsMut, Env, MessageInfo, Response, Timestamp, Uint128, BankMsg};
 use cw2::set_contract_version;
 use std::env;
-use std::ops::AddAssign;
+use std::ops::{AddAssign, SubAssign, Sub};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg};
@@ -54,6 +54,8 @@ pub fn execute(
             app_id,
             locking_period,
         } => handle_lock_nft(deps, env, info, app_id, locking_period),
+        ExecuteMsg::Unlock { app_id, denom } => handle_unlock_nft(deps, &env, msg, info, app_id, denom),
+        ExecuteMsg::Withdraw { app_id, denom, amount } =>withdraw(deps, &env, info, denom, amount),
         _ => Err(ContractError::CustomError {
             val: String::from("Not implemented"),
         }),
@@ -137,6 +139,7 @@ pub fn handle_lock_nft(
             };
 
             let new_vtoken = create_vtoken(&env, &info, locking_period, period, weight);
+            VTOKENS.save(deps.storage, (info.sender,&info.funds[0].denom), &new_vtoken);
 
             new_nft.vtokens.push(new_vtoken);
             TOKENS.save(deps.storage, info.sender, &new_nft)?;
@@ -181,19 +184,23 @@ pub fn handle_unlock_nft(
     info: MessageInfo,
     app_id: u64,
     denom: String,
-    tokenId: u64,
 ) -> Result<Response, ContractError> {
+    let mut state = STATE.load(deps.storage)?;
     let Vtoken = VTOKENS
-        .load(deps.storage, (info.sender, tokenId, &denom))
+        .load(deps.storage, (info.sender, &denom))
         .unwrap();
 
-    if Vtoken.status == Status::Unlocked {
+    if Vtoken.status == Status::Unlocked{
         ContractError::AllreadyUnLocked {  };
     }
+    let t = Timestamp::from_seconds(state.unlock_period).seconds();
 
-    if Vtoken.end_time < env.block.time {
+    if Vtoken.end_time < env.block.time && Vtoken.end_time.seconds() + state.unlock_period > env.block.time.seconds(){
+        Vtoken.status = Status::Unlocking;
+        // UNLOCKING.save(deps.storage, info.sender, data)
+    }else if Vtoken.end_time.seconds() + state.unlock_period < env.block.time.seconds()  {
         Vtoken.status = Status::Unlocked
-    } else {
+    }else{
         ContractError::TimeNotOvered {};
     }
 
@@ -202,7 +209,47 @@ pub fn handle_unlock_nft(
         .add_attribute("from", info.sender))
 }
 
-pub fn getPeriod(
+
+
+pub fn withdraw(
+    deps: DepsMut,
+    env: &Env,
+    info: MessageInfo,
+    denom: String,
+    amount:u64
+)->Result<Response,ContractError>{
+
+    let Vtoken = VTOKENS
+    .load(deps.storage, (info.sender, &denom))
+    .unwrap();
+
+    if Vtoken.status != Status::Unlocked{
+        ContractError::NotUnlocked {  };
+    }
+
+    if Vtoken.token.amount < Uint128::from(amount){
+        ContractError::InsufficientFunds { funds: Vtoken.token.amount.u128() };
+    }
+
+    let withdraw_amount = Vtoken.token.amount.sub(Uint128::from(amount));
+    Vtoken.token.amount.sub_assign(Uint128::from(amount));
+
+    if Vtoken.token.amount.is_zero(){
+        VTOKENS.remove(deps.storage, (info.sender,&denom));
+    }
+
+    Ok(Response::new()
+    .add_message(BankMsg::Send {
+        to_address: info.sender.to_string(),
+        amount: vec![Coin{ denom, amount: withdraw_amount }]
+    })
+    .add_attribute("action", "Withdraw")
+    .add_attribute("Recipent", info.sender))
+
+}
+
+
+fn getPeriod(
     state: &State,
     locking_period: LockingPeriod,
 ) -> Result<PeriodWeight, ContractError> {

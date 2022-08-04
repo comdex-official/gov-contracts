@@ -1,4 +1,5 @@
 use crate::state::{LockingPeriod, PeriodWeight, Vtoken};
+use cosmwasm_std::Timestamp;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -23,7 +24,17 @@ pub enum ExecuteMsg {
         locking_period: LockingPeriod,
     },
     /// Unlocks the locked tokens after meeting certain criteria
-    Unlock { app_id: u64, amount: u64 },
+    Unlock {
+        app_id: u64,
+        denom:String
+    },
+     /// Withdraws the locked tokens after meeting certain criteria
+    Withdraw{
+        app_id:u64,
+        denom:String,
+        amount:u64
+    }
+
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
