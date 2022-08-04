@@ -92,5 +92,6 @@ pub const UNLOCKING: Map<Addr, Vec<Coin>> = Map::new("unlocking");
 // Owner to unlocked tokens, i.e. token that can be withdrawn
 pub const UNLOCKED: Map<Addr, Vec<Coin>> = Map::new("unlocked");
 // Total supply of each vtoken
-pub const SUPPLY: Map<Coin, u128> = Map::new("supply");
+pub const SUPPLY: Map<&str, u128> = Map::new("supply");
+// Vtoken owned by an address for a specific denom
 pub const VTOKENS: Map<(Addr, &str), Vtoken> = Map::new("Vtokens by NFT");

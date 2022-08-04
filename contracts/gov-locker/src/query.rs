@@ -1,16 +1,23 @@
-use cosmwasm_std::{entry_point, to_binary, Binary, Deps, Env, StdError, StdResult, Addr, MessageInfo};
+use cosmwasm_std::{
+    entry_point, to_binary, Addr, Binary, Deps, Env, MessageInfo, StdError, StdResult,
+};
 
 use crate::ContractError;
 // use crate::error::ContractError;
-use crate::msg::{IssuedTokensResponse, QueryMsg, GetUnlockedTokenRespose};
-use crate::state::{TOKENS, VTOKENS, Status};
+use crate::msg::{GetUnlockedTokenRespose, IssuedTokensResponse, QueryMsg};
+use crate::state::{Status, TOKENS, VTOKENS};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, info: MessageInfo, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::IssuedTokens{address,token_id}=>{to_binary(&query_issued_tokens(deps,env,address,token_id)?)}
-        QueryMsg::GetUnlockedTokens {  denom } => get_unlocked_tokens(deps,info, denom)}}
-
+        QueryMsg::IssuedTokens { address, token_id } => {
+            to_binary(&query_issued_tokens(deps, env, address, token_id)?)
+        }
+        QueryMsg::GetUnlockedTokens { denom } => {
+            to_binary(&get_unlocked_tokens(deps, info, denom)?)
+        }
+    }
+}
 
 fn query_issued_tokens(
     deps: Deps,
@@ -34,22 +41,17 @@ fn query_issued_tokens(
 
 pub fn get_unlocked_tokens(
     deps: Deps,
-    info:MessageInfo,
+    info: MessageInfo,
     denom: String,
-)->StdResult<GetUnlockedTokenRespose>{
+) -> StdResult<GetUnlockedTokenRespose> {
+    let Vtoken = VTOKENS.load(deps.storage, (info.sender, &denom)).unwrap();
 
-    let Vtoken = VTOKENS
-    .load(deps.storage, (info.sender, &denom))
-    .unwrap();
-
-    if Vtoken.status != Status::Unlocked{
-        ContractError::NotUnlocked {  };
+    if Vtoken.status != Status::Unlocked {
+        ContractError::NotUnlocked {};
     }
 
-    let res = GetUnlockedTokenRespose{
+    let res = GetUnlockedTokenRespose {
         tokens: Vtoken.token.amount,
     };
     Ok(res)
-
-
 }

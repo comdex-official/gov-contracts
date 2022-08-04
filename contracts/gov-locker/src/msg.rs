@@ -1,5 +1,5 @@
 use crate::state::{LockingPeriod, PeriodWeight, Vtoken};
-use cosmwasm_std::{Timestamp, Coin, Uint128};
+use cosmwasm_std::{Coin, Timestamp, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -24,27 +24,26 @@ pub enum ExecuteMsg {
         locking_period: LockingPeriod,
     },
     /// Unlocks the locked tokens after meeting certain criteria
-    Unlock {
+    Unlock { app_id: u64, denom: String },
+    /// Withdraws the locked tokens after meeting certain criteria
+    Withdraw {
         app_id: u64,
-        denom:String
+        denom: String,
+        amount: u64,
     },
-     /// Withdraws the locked tokens after meeting certain criteria
-    Withdraw{
-        app_id:u64,
-        denom:String,
-        amount:u64
-    }
-
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    /// Query the amount of vTokens issued
-    IssuedTokens { address: String, token_id: u64 },
-    GetUnlockedTokens{
-        denom:String
-    }
+    /// Query the amount of vTokens issued to a single user
+    IssuedTokens {
+        address: String,
+        token_id: u64,
+    },
+    GetUnlockedTokens {
+        denom: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -52,8 +51,9 @@ pub struct IssuedTokensResponse {
     pub vtokens: Vec<Vtoken>,
 }
 
-pub struct GetUnlockedTokenRespose{
-    pub tokens:Uint128
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct GetUnlockedTokenRespose {
+    pub tokens: Uint128,
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct In {
