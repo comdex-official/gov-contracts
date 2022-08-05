@@ -1,10 +1,13 @@
 use cosmwasm_std::StdError;
 use thiserror::Error;
 
-#[derive(Error, Debug,PartialEq)]
+#[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
+
+    #[error("{msg:?}")]
+    NotFound { msg: String },
 
     #[error("Unauthorized")]
     Unauthorized {},
@@ -15,13 +18,13 @@ pub enum ContractError {
     #[error("The locking period is still active.")]
     TimeNotOvered {},
 
-    #[error("The VToken is Allready Unlocked.")]
+    #[error("The token is Allready Unlocked.")]
     AllreadyUnLocked {},
 
-    #[error("The VToken is in Locked State.")]
+    #[error("The token is in Locked State.")]
     NotUnlocked {},
 
-    #[error("The token is not in locked state")]
+    #[error("The token is not in Locked state")]
     NotLocked {},
 
     #[error("Custom Error val: {val:?}")]

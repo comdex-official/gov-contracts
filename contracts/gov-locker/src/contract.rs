@@ -1,10 +1,7 @@
-// !-----ONLY USE DURING TESTING, NOT OTHERWISE-----!
-// #![allow(unused_imports, unused_variables, dead_code)]
-
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::{
-    entry_point, BankMsg, Coin, Decimal, DepsMut, Env, MessageInfo, Response, Storage, Timestamp,
-    Uint128,
+    entry_point, Addr, BankMsg, Coin, Decimal, DepsMut, Env, MessageInfo, Response, Storage,
+    Timestamp, Uint128,
 };
 
 use cw2::set_contract_version;
@@ -60,14 +57,12 @@ pub fn execute(
             app_id,
             locking_period,
         } => handle_lock_nft(deps, env, info, app_id, locking_period),
-        // ExecuteMsg::Unlock { app_id, denom } => {
-        //     handle_unlock_nft(deps, &env, msg, info, app_id, denom)
-        // }
-        // ExecuteMsg::Withdraw {
-        //     app_id,
-        //     denom,
-        //     amount,
-        // } => withdraw(deps, &env, info, denom, amount),
+        ExecuteMsg::Unlock { app_id, denom } => handle_unlock_nft(deps, &env, info, app_id, denom),
+        ExecuteMsg::Withdraw {
+            app_id,
+            denom,
+            amount,
+        } => withdraw(deps, &env, info, denom, amount),
         _ => Err(ContractError::CustomError {
             val: String::from("Not implemented"),
         }),
@@ -112,6 +107,9 @@ pub fn handle_lock_nft(
                 .collect();
 
             if res.is_empty() {
+                // !------- BUG -------!
+                // !------- VTOKENS is not being updated -------!
+
                 // create new token
                 let new_vtoken = create_vtoken(
                     deps.storage,
@@ -121,12 +119,18 @@ pub fn handle_lock_nft(
                     period,
                     weight,
                 )?;
+
+                // update the tokens in LOCKED mapping
+                LOCKED.save(
+                    deps.storage,
+                    info.sender.clone(),
+                    &vec![info.funds[0].clone()],
+                )?;
+
+                // Save updated nft
                 token.vtokens.push(new_vtoken);
                 TOKENS.save(deps.storage, info.sender.clone(), &token)?;
             } else {
-                // !------- BUG -------!
-                // !------- Need to check if the tokens are Locked only then proceed -------!
-
                 let mut vtoken = res[0].to_owned();
 
                 if let Status::Locked = vtoken.status {
@@ -144,7 +148,7 @@ pub fn handle_lock_nft(
                     .collect();
 
                 // Increase the token count
-                vtoken.token.amount.add_assign(info.funds[0].clone().amount);
+                vtoken.token.amount.add_assign(info.funds[0].amount.clone());
 
                 // Increase the vtoken count
                 vtoken
@@ -162,6 +166,26 @@ pub fn handle_lock_nft(
 
                 TOKENS.save(deps.storage, info.sender.clone(), &token)?;
             }
+
+            // Update the LOCKED token count
+            let mut locked_tokens = LOCKED.load(deps.storage, info.sender.clone())?;
+
+            let res: Vec<(usize, &Coin)> = locked_tokens
+                .iter()
+                .enumerate()
+                .filter(|el| el.1.denom == info.funds[0].denom.clone())
+                .collect();
+
+            if res.is_empty() {
+                locked_tokens.push(info.funds[0].clone());
+            } else {
+                let index = res[0].0;
+                locked_tokens[index]
+                    .amount
+                    .add_assign(info.funds[0].amount.clone());
+            }
+
+            LOCKED.save(deps.storage, info.sender.clone(), &locked_tokens)?;
         }
         None => {
             // Create a new NFT
@@ -173,6 +197,7 @@ pub fn handle_lock_nft(
                 token_id: state.num_tokens,
             };
 
+            // Create new Vtoken for new deposit
             let new_vtoken = create_vtoken(
                 deps.storage,
                 &env,
@@ -181,10 +206,17 @@ pub fn handle_lock_nft(
                 period,
                 weight,
             )?;
+
             VTOKENS.save(
                 deps.storage,
                 (info.sender.clone(), &info.funds[0].denom),
                 &new_vtoken,
+            )?;
+
+            LOCKED.save(
+                deps.storage,
+                info.sender.clone(),
+                &vec![info.funds[0].clone()],
             )?;
 
             new_nft.vtokens.push(new_vtoken);
@@ -207,7 +239,7 @@ fn create_vtoken(
 ) -> Result<Vtoken, ContractError> {
     // Create the vtoken
     let mut vdenom = String::from("v");
-    vdenom.push_str(&info.funds[0].denom[..]);
+    vdenom.push_str(&info.funds[0].denom);
 
     let amount = weight * info.funds[0].amount;
 
@@ -243,19 +275,55 @@ fn update_denom_supply(
     Ok(())
 }
 
+/// Update the LOCKED mapping. This does not work when the mapping does not
+/// contain an entry for the given denom.
 fn update_locked(
     storage: &mut dyn Storage,
-    vdenom: &str,
-    quantity: u128,
+    owner: Addr,
+    denom: String,
+    amount: Uint128,
+    add: bool,
 ) -> Result<(), ContractError> {
-    // Update the Locked token count
+    let mut coin_vector = LOCKED.load(storage, owner.clone())?;
+
+    // Creates a (index, Coin) pair so that it is easier to update this coin later
+    let mut res: Vec<(usize, &Coin)> = coin_vector
+        .iter()
+        .enumerate()
+        .filter(|val| val.1.denom == denom)
+        .collect();
+
+    // Token should exist for the given denom
+    if res.is_empty() {
+        return Err(ContractError::NotFound {
+            msg: "given denom token not found".into(),
+        });
+    }
+
+    let index = res[0].0;
+    let updated_amount: Uint128;
+    if add {
+        updated_amount = res[0].1.amount + amount;
+    } else {
+        if res[0].1.amount < amount {
+            return Err(ContractError::CustomError {
+                val: "token.amount < amount".into(),
+            });
+        }
+
+        updated_amount = res[0].1.amount - amount;
+    }
+
+    coin_vector[index].amount = updated_amount;
+
+    LOCKED.save(storage, owner, &coin_vector)?;
+
     Ok(())
 }
 
 pub fn handle_unlock_nft(
     deps: DepsMut,
     env: &Env,
-    msg: ExecuteMsg,
     info: MessageInfo,
     app_id: u64,
     denom: String,
@@ -338,10 +406,6 @@ fn get_period(state: State, locking_period: LockingPeriod) -> Result<PeriodWeigh
 
 #[cfg(test)]
 mod tests {
-    use std::io::Stderr;
-
-    use crate::contract::{self, withdraw};
-
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{coins, Addr, StdError};
@@ -393,7 +457,7 @@ mod tests {
     }
 
     #[test]
-    fn lock() {
+    fn lock_create_new_nft() {
         // mock values
         let mut deps = mock_dependencies();
         let env = mock_env();
@@ -405,13 +469,6 @@ mod tests {
         let msg = ExecuteMsg::Lock {
             app_id: 12,
             locking_period: LockingPeriod::T1,
-        };
-
-        // This should throw an error because the amount is zero
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap_err();
-        match res {
-            ContractError::InsufficientFunds { .. } => {}
-            e => panic!("{:?}", e),
         };
 
         // Successful execution
@@ -450,6 +507,167 @@ mod tests {
         );
         assert_eq!(token.vtokens[0].period, LockingPeriod::T1);
         assert_eq!(token.vtokens[0].status, Status::Locked);
+
+        // Check to see the LOCKED token mapping has correctly changed
+        let locked_tokens = LOCKED
+            .load(deps.as_ref().storage, sender_addr.clone())
+            .unwrap();
+        assert_eq!(locked_tokens.len(), 1);
+        assert_eq!(locked_tokens[0].amount.u128(), 100u128);
+        assert_eq!(locked_tokens[0].denom, DENOM.to_string());
+    }
+
+    #[test]
+    fn lock_different_denom_and_time_period() {
+        // mock values
+        let mut deps = mock_dependencies();
+        let mut env = mock_env();
+        let info = mock_info("sender", &coins(0, DENOM.to_string()));
+
+        let imsg = init_msg();
+        instantiate(deps.as_mut(), env.clone(), info.clone(), imsg.clone()).unwrap();
+
+        let info = mock_info("owner", &coins(100, "DNM1".to_string()));
+        let owner_addr = Addr::unchecked("owner");
+
+        // Create a new entry for DENOM in nft
+        handle_lock_nft(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            10,
+            LockingPeriod::T1,
+        )
+        .unwrap();
+
+        // forward the time, inside 1 week
+        // env.block.time.plus_seconds(100_000);
+
+        let info = mock_info("owner", &coins(100, "DNM2".to_string()));
+        handle_lock_nft(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            10,
+            LockingPeriod::T2,
+        )
+        .unwrap();
+
+        // Check correct update in TOKENS
+        let nft = TOKENS
+            .load(deps.as_ref().storage, owner_addr.clone())
+            .unwrap();
+        assert_eq!(nft.vtokens.len(), 2);
+        assert_eq!(nft.vtokens[0].token.denom, "DNM1".to_string());
+        assert_eq!(nft.vtokens[0].vtoken.denom, "vDNM1".to_string());
+        assert_eq!(nft.vtokens[0].token.amount.u128(), 100u128);
+        assert_eq!(nft.vtokens[0].vtoken.amount.u128(), 25u128);
+        assert_eq!(nft.vtokens[0].start_time, env.block.time);
+        assert_eq!(
+            nft.vtokens[0].end_time,
+            env.block.time.plus_seconds(imsg.t1.period)
+        );
+        assert_eq!(nft.vtokens[0].period, LockingPeriod::T1);
+        assert_eq!(nft.vtokens[0].status, Status::Locked);
+
+        assert_eq!(nft.vtokens[1].token.denom, "DNM2".to_string());
+        assert_eq!(nft.vtokens[1].vtoken.denom, "vDNM2".to_string());
+        assert_eq!(nft.vtokens[1].token.amount.u128(), 100u128);
+        assert_eq!(nft.vtokens[1].vtoken.amount.u128(), 50u128);
+        assert_eq!(nft.vtokens[1].start_time, env.block.time);
+        assert_eq!(
+            nft.vtokens[1].end_time,
+            env.block.time.plus_seconds(imsg.t2.period)
+        );
+        assert_eq!(nft.vtokens[1].period, LockingPeriod::T2);
+        assert_eq!(nft.vtokens[1].status, Status::Locked);
+
+        // Check correct update in LOCKED
+    }
+
+    #[test]
+    fn lock_same_denom_and_time_period() {
+        // mock values
+        let mut deps = mock_dependencies();
+        let mut env = mock_env();
+        let info = mock_info("sender", &coins(0, DENOM.to_string()));
+
+        let imsg = init_msg();
+        instantiate(deps.as_mut(), env.clone(), info.clone(), imsg.clone()).unwrap();
+
+        let info = mock_info("owner", &coins(100, DENOM.to_string()));
+        let owner_addr = Addr::unchecked("owner");
+
+        // Create a new entry for DENOM in nft
+        handle_lock_nft(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            10,
+            LockingPeriod::T1,
+        )
+        .unwrap();
+
+        // forward the time, inside 1 week
+        env.block.time = env.block.time.plus_seconds(100_000);
+
+        let info = mock_info("owner", &coins(100, DENOM.to_string()));
+        handle_lock_nft(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            10,
+            LockingPeriod::T1,
+        )
+        .unwrap();
+
+        // Check correct updation in nft
+        let nft = TOKENS
+            .load(deps.as_ref().storage, owner_addr.clone())
+            .unwrap();
+        assert_eq!(nft.vtokens.len(), 1);
+        assert_eq!(nft.vtokens[0].token.amount.u128(), 200u128);
+        assert_eq!(nft.vtokens[0].vtoken.amount.u128(), 50u128);
+        assert_eq!(nft.vtokens[0].start_time, env.block.time);
+        assert_eq!(
+            nft.vtokens[0].end_time,
+            env.block.time.plus_seconds(imsg.t1.period)
+        );
+        assert_eq!(nft.vtokens[0].period, LockingPeriod::T1);
+        assert_eq!(nft.vtokens[0].status, Status::Locked);
+
+        // Check correct updation in LOCKED
+        let locked_tokens = LOCKED
+            .load(deps.as_ref().storage, owner_addr.clone())
+            .unwrap();
+        assert_eq!(locked_tokens.len(), 1);
+        assert_eq!(locked_tokens[0].amount.u128(), 200u128);
+        assert_eq!(locked_tokens[0].denom, DENOM.to_string());
+    }
+
+    #[test]
+    fn lock_zero_transfer() {
+        // mock values
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("sender", &coins(0, DENOM.to_string()));
+
+        let imsg = init_msg();
+        instantiate(deps.as_mut(), env.clone(), info.clone(), imsg.clone()).unwrap();
+
+        // This should throw an error because the amount is zero
+        let res = handle_lock_nft(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            10,
+            LockingPeriod::T1,
+        )
+        .unwrap_err();
+        match res {
+            ContractError::InsufficientFunds { .. } => {}
+            e => panic!("{:?}", e),
+        };
     }
 
     #[test]

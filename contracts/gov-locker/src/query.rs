@@ -147,7 +147,6 @@ pub fn query_unlocking_tokens(
     Ok(UnlockingTokensResponse { tokens: vtokens })
 }
 
-#[allow(unused_variables)]
 pub fn query_issued_vtokens(
     deps: Deps,
     env: Env,
