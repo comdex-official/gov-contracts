@@ -406,9 +406,13 @@ fn get_period(state: State, locking_period: LockingPeriod) -> Result<PeriodWeigh
 
 #[cfg(test)]
 mod tests {
+    use std::io::Stderr;
+
     use super::*;
+    use crate::msg::{QueryMsg, UnlockedTokensResponse};
+    use crate::query::query_unlocked_tokens;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{coins, Addr, StdError};
+    use cosmwasm_std::{coins, Addr, Deps, StdError};
 
     const DENOM: &str = "TKN";
 
@@ -671,7 +675,7 @@ mod tests {
     }
 
     #[test]
-    fn testwithdraw() {
+    fn test_withdraw() {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("sender", &coins(0, DENOM.to_string()));
@@ -742,6 +746,58 @@ mod tests {
             Err(StdError::NotFound {
                 kind: "gov_locker::state::Vtoken".to_string()
             })
+        );
+    }
+
+    #[test]
+    fn test_get_unlocked_tokens() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("sender", &coins(0, DENOM.to_string()));
+
+        let imsg = init_msg();
+        instantiate(deps.as_mut(), env.clone(), info.clone(), imsg.clone()).unwrap();
+
+        let msg = ExecuteMsg::Lock {
+            app_id: 12,
+            locking_period: LockingPeriod::T1,
+        };
+
+        let info = mock_info("user1", &coins(100, DENOM.to_string()));
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+        let mut vtoken = VTOKENS
+            .load(&deps.storage, (info.sender.clone(), &info.funds[0].denom))
+            .unwrap();
+        vtoken.status = Status::Unlocked;
+        assert_eq!(vtoken.token.denom, DENOM.to_string());
+        assert_eq!(vtoken.status, Status::Unlocked);
+        VTOKENS
+            .save(
+                &mut deps.storage,
+                (info.sender.clone(), &info.funds[0].denom),
+                &vtoken,
+            )
+            .unwrap();
+        let mut vtoken = VTOKENS
+            .load(&deps.storage, (info.sender.clone(), &info.funds[0].denom))
+            .unwrap();
+
+        let res = query_unlocked_tokens(
+            deps.as_ref(),
+            env,
+            info.clone(),
+            Option::Some(info.sender.to_string()),
+            Option::Some(info.funds[0].denom.to_string()),
+        )
+        .unwrap();
+        // Should get vtokens
+        assert_eq!(
+            res,
+            UnlockedTokensResponse {
+                tokens: vec![vtoken.vtoken]
+            }
         );
     }
 }
