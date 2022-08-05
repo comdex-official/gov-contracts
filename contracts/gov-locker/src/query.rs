@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    entry_point, to_binary, Addr, Binary, Deps, Env, MessageInfo, StdError, StdResult,
+    entry_point, to_binary, Addr, Binary, Deps, Env, MessageInfo, StdError, StdResult, DepsMut,
 };
 
 use crate::ContractError;
@@ -8,7 +8,7 @@ use crate::msg::{GetUnlockedTokenRespose, IssuedTokensResponse, QueryMsg};
 use crate::state::{Status, TOKENS, VTOKENS};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, info: MessageInfo, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: DepsMut, env: Env, info: MessageInfo, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::IssuedTokens { address, token_id } => {
             to_binary(&query_issued_tokens(deps, env, address, token_id)?)
@@ -20,7 +20,7 @@ pub fn query(deps: Deps, env: Env, info: MessageInfo, msg: QueryMsg) -> StdResul
 }
 
 fn query_issued_tokens(
-    deps: Deps,
+    deps: DepsMut,
     _env: Env,
     address: String,
     token_id: u64,
@@ -40,7 +40,7 @@ fn query_issued_tokens(
 }
 
 pub fn get_unlocked_tokens(
-    deps: Deps,
+    deps: DepsMut,
     info: MessageInfo,
     denom: String,
 ) -> StdResult<GetUnlockedTokenRespose> {

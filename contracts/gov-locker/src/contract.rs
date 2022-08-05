@@ -337,10 +337,12 @@ mod tests {
     use std::io::Stderr;
 
     use crate::contract::{withdraw, self};
+    use crate::msg::{QueryMsg, GetUnlockedTokenRespose};
+    use crate::query::get_unlocked_tokens;
 
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{coins, Addr, StdError};
+    use cosmwasm_std::{coins, Addr, StdError, Deps};
 
     const DENOM: &str = "TKN";
 
@@ -449,7 +451,7 @@ mod tests {
     }
 
     #[test]
-    fn testwithdraw() {
+    fn test_withdraw() {
 
         let mut deps = mock_dependencies();
         let env = mock_env();
@@ -506,5 +508,44 @@ mod tests {
 
         let mut _vtoken =VTOKENS.load(&deps.storage, (info.sender,&info.funds[0].denom));
         assert_eq!(_vtoken,Err(StdError::NotFound { kind: "gov_locker::state::Vtoken".to_string() }));
+    }
+
+    #[test]
+    fn test_get_unlocked_tokens(){
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("sender", &coins(0, DENOM.to_string()));
+
+        let imsg = init_msg();
+        instantiate(deps.as_mut(), env.clone(), info.clone(), imsg.clone()).unwrap();
+
+        let msg = ExecuteMsg::Lock {
+            app_id: 12,
+            locking_period: LockingPeriod::T1,
+        };
+
+        let info = mock_info("user1", &coins(100, DENOM.to_string()));
+
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            msg.clone()
+        ).unwrap();
+
+        let mut vtoken =VTOKENS.load(&deps.storage, (info.sender.clone(),&info.funds[0].denom)).unwrap();
+        vtoken.status= Status::Unlocked;
+
+        assert_eq!(vtoken.token.denom,DENOM.to_string());
+        assert_eq!(vtoken.status,Status::Unlocked);
+
+        let res =get_unlocked_tokens(
+            deps.as_mut(),
+            info.clone(),
+            info.funds[0].denom.to_string()
+        ).unwrap();
+        let n:u64=100;
+        // Should equal to 100 Tokens
+        assert_eq!(res,GetUnlockedTokenRespose{ tokens: Uint128::from(n) })
     }
 }
