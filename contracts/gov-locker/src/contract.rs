@@ -279,8 +279,7 @@ pub fn handle_unlock_nft(
         ContractError::TimeNotOvered {};
     }
 
-    Ok(Response::new()
-        .add_attribute("action", "unlock"))
+    Ok(Response::new().add_attribute("action", "unlock"))
 }
 
 pub fn withdraw(
@@ -290,7 +289,9 @@ pub fn withdraw(
     denom: String,
     amount: u64,
 ) -> Result<Response, ContractError> {
-    let mut Vtoken = VTOKENS.load(deps.storage, (info.sender.clone(), &denom)).unwrap();
+    let mut Vtoken = VTOKENS
+        .load(deps.storage, (info.sender.clone(), &denom))
+        .unwrap();
 
     if Vtoken.status != Status::Unlocked {
         ContractError::NotUnlocked {};
@@ -303,9 +304,13 @@ pub fn withdraw(
     }
 
     let withdraw_amount = Vtoken.token.amount.sub(Uint128::from(amount));
-    Vtoken.token.amount -=Uint128::from(amount);
-    VTOKENS.save(deps.storage, (info.sender.clone(),&info.funds[0].denom), &Vtoken)?;
-    let vtoken=VTOKENS.load(deps.storage, (info.sender.clone(),&info.funds[0].denom))?;
+    Vtoken.token.amount -= Uint128::from(amount);
+    VTOKENS.save(
+        deps.storage,
+        (info.sender.clone(), &info.funds[0].denom),
+        &Vtoken,
+    )?;
+    let vtoken = VTOKENS.load(deps.storage, (info.sender.clone(), &info.funds[0].denom))?;
     if vtoken.token.amount.is_zero() {
         VTOKENS.remove(deps.storage, (info.sender.clone(), &denom));
     }
@@ -313,15 +318,14 @@ pub fn withdraw(
     Ok(Response::new()
         .add_message(BankMsg::Send {
             to_address: info.sender.to_string(),
-            amount: vec![Coin{
+            amount: vec![Coin {
                 denom,
-                amount: withdraw_amount }],
+                amount: withdraw_amount,
+            }],
         })
         .add_attribute("action", "Withdraw")
         .add_attribute("Recipent", info.sender))
 }
-
-
 
 fn get_period(state: State, locking_period: LockingPeriod) -> Result<PeriodWeight, ContractError> {
     Ok(match locking_period {
@@ -337,8 +341,8 @@ mod tests {
     use std::io::Stderr;
 
     use crate::contract::{withdraw, self};
-    use crate::msg::{QueryMsg, GetUnlockedTokenRespose};
-    use crate::query::get_unlocked_tokens;
+    use crate::msg::{QueryMsg, UnlockedTokensResponse};
+    use crate::query::query_unlocked_tokens;
 
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
@@ -469,45 +473,61 @@ mod tests {
 
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
-        let mut vtoken =VTOKENS.load(&deps.storage, (info.sender.clone(),&info.funds[0].denom)).unwrap();
-        vtoken.status= Status::Unlocked;
+        let mut vtoken = VTOKENS
+            .load(&deps.storage, (info.sender.clone(), &info.funds[0].denom))
+            .unwrap();
+        vtoken.status = Status::Unlocked;
 
-        assert_eq!(vtoken.token.denom,DENOM.to_string());
-        assert_eq!(vtoken.status,Status::Unlocked);
+        assert_eq!(vtoken.token.denom, DENOM.to_string());
+        assert_eq!(vtoken.status, Status::Unlocked);
 
         // Withdrawing 10 Tokens
         let err = withdraw(
             deps.as_mut(),
-            &env, info.clone(),
+            &env,
+            info.clone(),
             info.funds[0].denom.clone(),
-            10
+            10,
         );
 
-        let mut _vtoken =VTOKENS.load(&deps.storage, (info.sender.clone(),&info.funds[0].denom)).unwrap();
+        let mut _vtoken = VTOKENS
+            .load(&deps.storage, (info.sender.clone(), &info.funds[0].denom))
+            .unwrap();
 
-        assert_eq!(err,Ok(Response::new()
-        .add_message(BankMsg::Send {
-            to_address: info.sender.to_string(),
-            amount: vec![_vtoken.token],
-        })
-        .add_attribute("action", "Withdraw")
-        .add_attribute("Recipent", info.sender.clone())));
+        assert_eq!(
+            err,
+            Ok(Response::new()
+                .add_message(BankMsg::Send {
+                    to_address: info.sender.to_string(),
+                    amount: vec![_vtoken.token],
+                })
+                .add_attribute("action", "Withdraw")
+                .add_attribute("Recipent", info.sender.clone()))
+        );
 
         // Should left 100 - 10 = 90 tokens
-        let mut _vtoken =VTOKENS.load(&deps.storage, (info.sender.clone(),&info.funds[0].denom)).unwrap();
-        let n:u64=90;
-        assert_eq!(_vtoken.token.amount,Uint128::from(n));
+        let mut _vtoken = VTOKENS
+            .load(&deps.storage, (info.sender.clone(), &info.funds[0].denom))
+            .unwrap();
+        let n: u64 = 90;
+        assert_eq!(_vtoken.token.amount, Uint128::from(n));
 
         // Withdrawing All Tokens and Should remove the vtoken.
         let err = withdraw(
             deps.as_mut(),
-            &env, info.clone(),
+            &env,
+            info.clone(),
             info.funds[0].denom.clone(),
-            90
+            90,
         );
 
-        let mut _vtoken =VTOKENS.load(&deps.storage, (info.sender,&info.funds[0].denom));
-        assert_eq!(_vtoken,Err(StdError::NotFound { kind: "gov_locker::state::Vtoken".to_string() }));
+        let mut _vtoken = VTOKENS.load(&deps.storage, (info.sender, &info.funds[0].denom));
+        assert_eq!(
+            _vtoken,
+            Err(StdError::NotFound {
+                kind: "gov_locker::state::Vtoken".to_string()
+            })
+        );
     }
 
     #[test]
@@ -535,17 +555,19 @@ mod tests {
 
         let mut vtoken =VTOKENS.load(&deps.storage, (info.sender.clone(),&info.funds[0].denom)).unwrap();
         vtoken.status= Status::Unlocked;
-
         assert_eq!(vtoken.token.denom,DENOM.to_string());
         assert_eq!(vtoken.status,Status::Unlocked);
+        VTOKENS.save(&mut deps.storage,(info.sender.clone(),&info.funds[0].denom), &vtoken).unwrap();
+        let mut vtoken =VTOKENS.load(&deps.storage, (info.sender.clone(),&info.funds[0].denom)).unwrap();
 
-        let res =get_unlocked_tokens(
-            deps.as_mut(),
+        let res =query_unlocked_tokens(
+            deps.as_ref(),
+            env,
             info.clone(),
-            info.funds[0].denom.to_string()
+            Option::Some(info.sender.to_string()),
+            Option::Some(info.funds[0].denom.to_string())
         ).unwrap();
-        let n:u64=100;
-        // Should equal to 100 Tokens
-        assert_eq!(res,GetUnlockedTokenRespose{ tokens: Uint128::from(n) })
+    // Should get vtokens
+        assert_eq!(res,UnlockedTokensResponse{ tokens: vec![vtoken.vtoken] });
     }
 }
