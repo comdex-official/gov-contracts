@@ -1,5 +1,5 @@
-use crate::state::{LockingPeriod, PeriodWeight, Vtoken};
-use cosmwasm_std::{Coin, Timestamp, Uint128};
+use crate::state::{LockingPeriod, PeriodWeight, TokenInfo, Vtoken};
+use cosmwasm_std::{Coin, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -36,26 +36,55 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    /// Query the amount of vTokens issued to a single user
-    IssuedTokens {
-        address: String,
-        token_id: u64,
+    /// Query the NFT
+    IssuedNft { address: String },
+
+    /// Query the tokens with Unlocked status. If denom is supplied, then only
+    /// query for a specific denomination, else return all tokens.
+    UnlockedTokens {
+        address: Option<String>,
+        denom: Option<String>,
     },
-    GetUnlockedTokens {
-        denom: String,
+
+    /// Query the tokens with Unlocking status. If denom is supplied, then only
+    /// query for a specific denomination, else return all tokens.
+    UnlockingTokens {
+        address: Option<String>,
+        denom: Option<String>,
     },
+
+    /// Query the tokens with Locked status. If denom is supplied, the only
+    /// query for a specific denomination, else return all tokens.
+    LockedTokens {
+        address: Option<String>,
+        denom: Option<String>,
+    },
+
+    /// Query the total vtokens issued to a single user.
+    IssuedVtokens { address: Option<String> },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct IssuedTokensResponse {
+pub struct IssuedNftResponse {
+    pub nft: TokenInfo,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct UnlockedTokensResponse {
+    pub tokens: Vec<Coin>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct UnlockingTokensResponse {
+    pub tokens: Vec<Coin>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct LockedTokensResponse {
+    pub tokens: Vec<Coin>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct IssuedVtokensResponse {
     pub vtokens: Vec<Vtoken>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetUnlockedTokenRespose {
-    pub tokens: Uint128,
-}
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct In {
-    pub _vperiods: Vec<LockingPeriod>,
 }

@@ -252,75 +252,75 @@ fn update_locked(
     Ok(())
 }
 
-// pub fn handle_unlock_nft(
-//     deps: DepsMut,
-//     env: &Env,
-//     msg: ExecuteMsg,
-//     info: MessageInfo,
-//     app_id: u64,
-//     denom: String,
-// ) -> Result<Response, ContractError> {
-//     let mut state = STATE.load(deps.storage)?;
-//     let Vtoken = VTOKENS.load(deps.storage, (info.sender, &denom)).unwrap();
+pub fn handle_unlock_nft(
+    deps: DepsMut,
+    env: &Env,
+    msg: ExecuteMsg,
+    info: MessageInfo,
+    app_id: u64,
+    denom: String,
+) -> Result<Response, ContractError> {
+    let mut state = STATE.load(deps.storage)?;
+    let Vtoken = VTOKENS.load(deps.storage, (info.sender, &denom)).unwrap();
 
-//     if Vtoken.status == Status::Unlocked {
-//         ContractError::AllreadyUnLocked {};
-//     }
-//     let t = Timestamp::from_seconds(state.unlock_period).seconds();
+    if Vtoken.status == Status::Unlocked {
+        ContractError::AllreadyUnLocked {};
+    }
+    let t = Timestamp::from_seconds(state.unlock_period).seconds();
 
-//     if Vtoken.end_time < env.block.time
-//         && Vtoken.end_time.seconds() + state.unlock_period > env.block.time.seconds()
-//     {
-//         Vtoken.status = Status::Unlocking;
-//         // UNLOCKING.save(deps.storage, info.sender, data)
-//     } else if Vtoken.end_time.seconds() + state.unlock_period < env.block.time.seconds() {
-//         Vtoken.status = Status::Unlocked
-//     } else {
-//         ContractError::TimeNotOvered {};
-//     }
+    if Vtoken.end_time < env.block.time
+        && Vtoken.end_time.seconds() + state.unlock_period > env.block.time.seconds()
+    {
+        Vtoken.status = Status::Unlocking;
+        // UNLOCKING.save(deps.storage, info.sender, data)
+    } else if Vtoken.end_time.seconds() + state.unlock_period < env.block.time.seconds() {
+        Vtoken.status = Status::Unlocked
+    } else {
+        ContractError::TimeNotOvered {};
+    }
 
-//     Ok(Response::new()
-//         .add_attribute("action", "unlock")
-//         .add_attribute("from", info.sender))
-// }
+    Ok(Response::new()
+        .add_attribute("action", "unlock")
+        .add_attribute("from", info.sender))
+}
 
-// pub fn withdraw(
-//     deps: DepsMut,
-//     env: &Env,
-//     info: MessageInfo,
-//     denom: String,
-//     amount: u64,
-// ) -> Result<Response, ContractError> {
-//     let Vtoken = VTOKENS.load(deps.storage, (info.sender, &denom)).unwrap();
+pub fn withdraw(
+    deps: DepsMut,
+    env: &Env,
+    info: MessageInfo,
+    denom: String,
+    amount: u64,
+) -> Result<Response, ContractError> {
+    let Vtoken = VTOKENS.load(deps.storage, (info.sender, &denom)).unwrap();
 
-//     if Vtoken.status != Status::Unlocked {
-//         ContractError::NotUnlocked {};
-//     }
+    if Vtoken.status != Status::Unlocked {
+        ContractError::NotUnlocked {};
+    }
 
-//     if Vtoken.token.amount < Uint128::from(amount) {
-//         ContractError::InsufficientFunds {
-//             funds: Vtoken.token.amount.u128(),
-//         };
-//     }
+    if Vtoken.token.amount < Uint128::from(amount) {
+        ContractError::InsufficientFunds {
+            funds: Vtoken.token.amount.u128(),
+        };
+    }
 
-//     let withdraw_amount = Vtoken.token.amount.sub(Uint128::from(amount));
-//     Vtoken.token.amount.sub_assign(Uint128::from(amount));
+    let withdraw_amount = Vtoken.token.amount.sub(Uint128::from(amount));
+    Vtoken.token.amount.sub_assign(Uint128::from(amount));
 
-//     if Vtoken.token.amount.is_zero() {
-//         VTOKENS.remove(deps.storage, (info.sender, &denom));
-//     }
+    if Vtoken.token.amount.is_zero() {
+        VTOKENS.remove(deps.storage, (info.sender, &denom));
+    }
 
-//     Ok(Response::new()
-//         .add_message(BankMsg::Send {
-//             to_address: info.sender.to_string(),
-//             amount: vec![Coin {
-//                 denom,
-//                 amount: withdraw_amount,
-//             }],
-//         })
-//         .add_attribute("action", "Withdraw")
-//         .add_attribute("Recipent", info.sender))
-// }
+    Ok(Response::new()
+        .add_message(BankMsg::Send {
+            to_address: info.sender.to_string(),
+            amount: vec![Coin {
+                denom,
+                amount: withdraw_amount,
+            }],
+        })
+        .add_attribute("action", "Withdraw")
+        .add_attribute("Recipent", info.sender))
+}
 
 fn get_period(state: State, locking_period: LockingPeriod) -> Result<PeriodWeight, ContractError> {
     Ok(match locking_period {
