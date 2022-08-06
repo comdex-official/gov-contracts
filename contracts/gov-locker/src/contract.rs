@@ -11,8 +11,8 @@ use std::ops::{AddAssign, Sub, SubAssign};
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg};
 use crate::state::{
-    LockingPeriod, PeriodWeight, State, Status, TokenInfo, Vtoken, LOCKED, STATE, SUPPLY, TOKENS,
-    UNLOCKED, UNLOCKING, VTOKENS,
+    LockingPeriod, PeriodWeight, State, Status, TokenInfo, TokenSupply, Vtoken, LOCKED, STATE,
+    SUPPLY, TOKENS, UNLOCKED, UNLOCKING, VTOKENS,
 };
 
 // version info for migration info
@@ -120,13 +120,6 @@ pub fn handle_lock_nft(
                     weight,
                 )?;
 
-                // update the tokens in LOCKED mapping
-                LOCKED.save(
-                    deps.storage,
-                    info.sender.clone(),
-                    &vec![info.funds[0].clone()],
-                )?;
-
                 // Save updated nft
                 token.vtokens.push(new_vtoken);
                 TOKENS.save(deps.storage, info.sender.clone(), &token)?;
@@ -167,25 +160,14 @@ pub fn handle_lock_nft(
                 TOKENS.save(deps.storage, info.sender.clone(), &token)?;
             }
 
-            // Update the LOCKED token count
-            let mut locked_tokens = LOCKED.load(deps.storage, info.sender.clone())?;
-
-            let res: Vec<(usize, &Coin)> = locked_tokens
-                .iter()
-                .enumerate()
-                .filter(|el| el.1.denom == info.funds[0].denom.clone())
-                .collect();
-
-            if res.is_empty() {
-                locked_tokens.push(info.funds[0].clone());
-            } else {
-                let index = res[0].0;
-                locked_tokens[index]
-                    .amount
-                    .add_assign(info.funds[0].amount.clone());
-            }
-
-            LOCKED.save(deps.storage, info.sender.clone(), &locked_tokens)?;
+            // LOCKED.save(deps.storage, info.sender.clone(), &locked_tokens)?;
+            update_locked(
+                deps.storage,
+                info.sender.clone(),
+                info.funds[0].denom.clone(),
+                info.funds[0].amount,
+                true,
+            )?;
         }
         None => {
             // Create a new NFT
@@ -243,7 +225,12 @@ fn create_vtoken(
 
     let amount = weight * info.funds[0].amount;
 
-    update_denom_supply(storage, vdenom.as_str(), amount.u128())?;
+    update_denom_supply(
+        storage,
+        vdenom.as_str(),
+        amount.u128(),
+        info.funds[0].amount.u128(),
+    )?;
 
     Ok(Vtoken {
         token: info.funds[0].clone(),
@@ -261,16 +248,20 @@ fn create_vtoken(
 fn update_denom_supply(
     storage: &mut dyn Storage,
     vdenom: &str,
+    vquantity: u128,
     quantity: u128,
 ) -> Result<(), ContractError> {
-    let mut quantity = quantity;
+    let quantity = quantity;
     let vdenom_supply = SUPPLY.may_load(storage, vdenom)?;
+    let mut vdenom_supply_struct = vdenom_supply.unwrap_or(TokenSupply {
+        token: 0,
+        vtoken: 0,
+    });
 
-    if let Some(val) = vdenom_supply {
-        quantity = quantity + val;
-    };
+    vdenom_supply_struct.vtoken += vquantity;
+    vdenom_supply_struct.token += quantity;
 
-    SUPPLY.save(storage, vdenom, &quantity)?;
+    SUPPLY.save(storage, vdenom, &vdenom_supply_struct)?;
 
     Ok(())
 }
@@ -284,10 +275,11 @@ fn update_locked(
     amount: Uint128,
     add: bool,
 ) -> Result<(), ContractError> {
-    let mut coin_vector = LOCKED.load(storage, owner.clone())?;
+    let coin_vector = LOCKED.may_load(storage, owner.clone())?;
+    let mut coin_vector = coin_vector.unwrap_or(vec![]);
 
     // Creates a (index, Coin) pair so that it is easier to update this coin later
-    let mut res: Vec<(usize, &Coin)> = coin_vector
+    let res: Vec<(usize, &Coin)> = coin_vector
         .iter()
         .enumerate()
         .filter(|val| val.1.denom == denom)
@@ -295,26 +287,32 @@ fn update_locked(
 
     // Token should exist for the given denom
     if res.is_empty() {
-        return Err(ContractError::NotFound {
-            msg: "given denom token not found".into(),
-        });
-    }
-
-    let index = res[0].0;
-    let updated_amount: Uint128;
-    if add {
-        updated_amount = res[0].1.amount + amount;
-    } else {
-        if res[0].1.amount < amount {
-            return Err(ContractError::CustomError {
-                val: "token.amount < amount".into(),
+        if !add {
+            return Err(ContractError::NotFound {
+                msg: "Locked tokens don't exist for given denom".to_string(),
             });
         }
+        coin_vector.push(Coin {
+            amount: amount,
+            denom: denom.clone(),
+        });
+    } else {
+        let index = res[0].0;
+        let updated_amount: Uint128;
+        if add {
+            updated_amount = res[0].1.amount + amount;
+        } else {
+            if res[0].1.amount < amount {
+                return Err(ContractError::CustomError {
+                    val: "token.amount < amount".into(),
+                });
+            }
 
-        updated_amount = res[0].1.amount - amount;
+            updated_amount = res[0].1.amount - amount;
+        }
+
+        coin_vector[index].amount = updated_amount;
     }
-
-    coin_vector[index].amount = updated_amount;
 
     LOCKED.save(storage, owner, &coin_vector)?;
 
@@ -587,6 +585,14 @@ mod tests {
         assert_eq!(nft.vtokens[1].status, Status::Locked);
 
         // Check correct update in LOCKED
+        let locked_map = LOCKED
+            .load(deps.as_ref().storage, owner_addr.clone())
+            .unwrap();
+        assert_eq!(locked_map.len(), 2);
+        assert_eq!(locked_map[0].denom, "DNM1".to_string());
+        assert_eq!(locked_map[0].amount.u128(), 100u128);
+        assert_eq!(locked_map[1].denom, "DNM2".to_string());
+        assert_eq!(locked_map[1].amount.u128(), 100u128);
     }
 
     #[test]

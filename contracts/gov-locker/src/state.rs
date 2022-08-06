@@ -80,6 +80,15 @@ pub struct State {
     pub num_tokens: u64,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct TokenSupply {
+    // total token locked, unlocked or unlocking
+    pub token: u128,
+    // total vtoken released
+    pub vtoken: u128,
+}
+
 // The following mappings are as follows
 // Holds the internal state
 pub const STATE: Item<State> = Item::new("state");
@@ -91,7 +100,8 @@ pub const LOCKED: Map<Addr, Vec<Coin>> = Map::new("locked");
 pub const UNLOCKING: Map<Addr, Vec<Coin>> = Map::new("unlocking");
 // Owner to unlocked tokens, i.e. token that can be withdrawn
 pub const UNLOCKED: Map<Addr, Vec<Coin>> = Map::new("unlocked");
-// Total supply of each vtoken
-pub const SUPPLY: Map<&str, u128> = Map::new("supply");
+// Total supply of each (vtoken supplied, token deposited)
+pub const SUPPLY: Map<&str, TokenSupply> = Map::new("supply");
 // Vtoken owned by an address for a specific denom
+// !------- Should be Coin rather than Vtoken -------!
 pub const VTOKENS: Map<(Addr, &str), Vtoken> = Map::new("Vtokens by NFT");
