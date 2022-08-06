@@ -44,7 +44,6 @@ pub fn instantiate(
         .add_attribute("from", info.sender))
 }
 
-#[allow(unused_variables)]
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
@@ -57,15 +56,14 @@ pub fn execute(
             app_id,
             locking_period,
         } => handle_lock_nft(deps, env, info, app_id, locking_period),
-        ExecuteMsg::Unlock { app_id, denom } => handle_unlock_nft(deps, &env, info, app_id, denom),
+
+        ExecuteMsg::Unlock { app_id, denom } => handle_unlock_nft(deps, env, info, app_id, denom),
+
         ExecuteMsg::Withdraw {
             app_id,
             denom,
             amount,
         } => withdraw(deps, &env, info, denom, amount),
-        _ => Err(ContractError::CustomError {
-            val: String::from("Not implemented"),
-        }),
     }
 }
 
@@ -245,6 +243,8 @@ fn create_vtoken(
     })
 }
 
+/// Update the SUPPLY map for the toal supply for vtokens and the corresponding
+/// tokens locked.
 fn update_denom_supply(
     storage: &mut dyn Storage,
     vdenom: &str,
@@ -266,8 +266,7 @@ fn update_denom_supply(
     Ok(())
 }
 
-/// Update the LOCKED mapping. This does not work when the mapping does not
-/// contain an entry for the given denom.
+/// Update the LOCKED mapping.
 fn update_locked(
     storage: &mut dyn Storage,
     owner: Addr,
@@ -321,7 +320,7 @@ fn update_locked(
 
 pub fn handle_unlock_nft(
     deps: DepsMut,
-    env: &Env,
+    env: Env,
     info: MessageInfo,
     app_id: u64,
     denom: String,
@@ -404,13 +403,9 @@ fn get_period(state: State, locking_period: LockingPeriod) -> Result<PeriodWeigh
 
 #[cfg(test)]
 mod tests {
-    use std::io::Stderr;
-
     use super::*;
-    use crate::msg::{QueryMsg, UnlockedTokensResponse};
-    use crate::query::query_unlocked_tokens;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{coins, Addr, Deps, StdError};
+    use cosmwasm_std::{coins, Addr, StdError};
 
     const DENOM: &str = "TKN";
 
@@ -752,58 +747,6 @@ mod tests {
             Err(StdError::NotFound {
                 kind: "gov_locker::state::Vtoken".to_string()
             })
-        );
-    }
-
-    #[test]
-    fn test_get_unlocked_tokens() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        let info = mock_info("sender", &coins(0, DENOM.to_string()));
-
-        let imsg = init_msg();
-        instantiate(deps.as_mut(), env.clone(), info.clone(), imsg.clone()).unwrap();
-
-        let msg = ExecuteMsg::Lock {
-            app_id: 12,
-            locking_period: LockingPeriod::T1,
-        };
-
-        let info = mock_info("user1", &coins(100, DENOM.to_string()));
-
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-
-        let mut vtoken = VTOKENS
-            .load(&deps.storage, (info.sender.clone(), &info.funds[0].denom))
-            .unwrap();
-        vtoken.status = Status::Unlocked;
-        assert_eq!(vtoken.token.denom, DENOM.to_string());
-        assert_eq!(vtoken.status, Status::Unlocked);
-        VTOKENS
-            .save(
-                &mut deps.storage,
-                (info.sender.clone(), &info.funds[0].denom),
-                &vtoken,
-            )
-            .unwrap();
-        let mut vtoken = VTOKENS
-            .load(&deps.storage, (info.sender.clone(), &info.funds[0].denom))
-            .unwrap();
-
-        let res = query_unlocked_tokens(
-            deps.as_ref(),
-            env,
-            info.clone(),
-            Option::Some(info.sender.to_string()),
-            Option::Some(info.funds[0].denom.to_string()),
-        )
-        .unwrap();
-        // Should get vtokens
-        assert_eq!(
-            res,
-            UnlockedTokensResponse {
-                tokens: vec![vtoken.vtoken]
-            }
         );
     }
 }
