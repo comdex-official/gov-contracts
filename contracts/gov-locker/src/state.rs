@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Coin, Decimal, Timestamp};
+use cosmwasm_std::{Addr, Coin, Decimal, Timestamp, MessageInfo};
 use cw_storage_plus::{Item, Map};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -42,11 +42,31 @@ pub enum Status {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
+pub enum CallType{
+    Lock,
+
+    Deposit,
+
+    UpdateAmount,
+
+    UpdateLokingPeriod,
+}
+
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub struct Vtoken {
     /// amount of token being locked
     pub token: Coin,
     /// amount of vtoken created
     pub vtoken: Coin,
+    /// Locking period i.e. T1..4
+    pub period: Vec<LockingPeriodOfTokens>
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct LockingPeriodOfTokens{
     /// Locking period i.e. T1..4
     pub period: LockingPeriod,
     /// Time at which the tokens were locked
@@ -88,6 +108,41 @@ pub struct TokenSupply {
     // total vtoken released
     pub vtoken: u128,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub struct LockNFTArgs{
+    app_id:u64,
+    locking_period:LockingPeriod,
+    info:MessageInfo
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub struct DepositArgs{
+    app_id:u64,
+    locking_period:LockingPeriod,
+    info:MessageInfo
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub struct UpdateAmount{
+    app_id:u64,
+    locking_period:LockingPeriod,
+    info:MessageInfo
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub struct UpdateLokingPeriod{
+    app_id:u64,
+    locking_period:LockingPeriod,
+    info:MessageInfo
+}
+
+
+
 
 // The following mappings are as follows
 // Holds the internal state
