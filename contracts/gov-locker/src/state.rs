@@ -63,8 +63,10 @@ pub struct Vtoken {
 pub struct TokenInfo {
     /// Owner of the NFT
     pub owner: Addr,
-    /// vtokens issued
+    /// vtokens
+    /// Should be reomved
     pub vtokens: Vec<Vtoken>,
+    // A unique id for each token
     pub token_id: u64,
 }
 
@@ -105,3 +107,6 @@ pub const SUPPLY: Map<&str, TokenSupply> = Map::new("supply");
 // Vtoken owned by an address for a specific denom
 // !------- Should be Coin rather than Vtoken -------!
 pub const VTOKENS: Map<(Addr, &str), Vtoken> = Map::new("Vtokens by NFT");
+
+// !------- Correct VTOKENS -------!
+// pub const VTOKENS: Map<(Addr, &str, LockingPeriod), Vtoken> = Map::new("vtokens");

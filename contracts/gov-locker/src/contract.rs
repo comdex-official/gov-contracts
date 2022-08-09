@@ -318,6 +318,7 @@ fn update_locked(
     Ok(())
 }
 
+// !------- Update the UNLOCKING/UNLOCKED map-------!
 pub fn handle_unlock_nft(
     deps: DepsMut,
     env: Env,
@@ -325,12 +326,17 @@ pub fn handle_unlock_nft(
     app_id: u64,
     denom: String,
 ) -> Result<Response, ContractError> {
+    // Load the internal state
     let mut state = STATE.load(deps.storage)?;
+    // Load the vtoken for the given denom
     let mut Vtoken = VTOKENS.load(deps.storage, (info.sender, &denom)).unwrap();
 
+    // Check if tokens have already been unlocked
     if Vtoken.status == Status::Unlocked {
         ContractError::AllreadyUnLocked {};
     }
+
+    // !------- Need duration here -------!
     let t = Timestamp::from_seconds(state.unlock_period).seconds();
 
     if Vtoken.end_time < env.block.time
@@ -343,6 +349,8 @@ pub fn handle_unlock_nft(
     } else {
         ContractError::TimeNotOvered {};
     }
+
+    // !------- Not storing the updated result in VTOKENS -------!
 
     Ok(Response::new().add_attribute("action", "unlock"))
 }
@@ -370,6 +378,8 @@ pub fn withdraw(
 
     let withdraw_amount = Vtoken.token.amount.sub(Uint128::from(amount));
     Vtoken.token.amount -= Uint128::from(amount);
+
+    // !------- info.funds[0].denom -> denom in argument -------!
     VTOKENS.save(
         deps.storage,
         (info.sender.clone(), &info.funds[0].denom),

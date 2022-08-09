@@ -1,4 +1,5 @@
 // !------- IssuedVtokens query not implemented-------!
+// !------- Tests for queries -------!
 
 use cosmwasm_std::{
     entry_point, to_binary, Addr, Binary, Coin, Deps, Env, MessageInfo, StdError, StdResult,
@@ -8,7 +9,7 @@ use crate::msg::{
     IssuedNftResponse, IssuedVtokensResponse, LockedTokensResponse, QueryMsg,
     UnlockedTokensResponse, UnlockingTokensResponse,
 };
-use crate::state::{Status, LOCKED, TOKENS, UNLOCKED, UNLOCKING, VTOKENS};
+use crate::state::{LOCKED, TOKENS, UNLOCKED, UNLOCKING};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, info: MessageInfo, msg: QueryMsg) -> StdResult<Binary> {
@@ -45,7 +46,7 @@ pub fn query_issued_nft(
     match nft {
         Some(val) => Ok(IssuedNftResponse { nft: val }),
         None => Err(StdError::NotFound {
-            kind: String::from("NFT does not exist for the given address"),
+            kind: String::from("NFT not found"),
         }),
     }
 }
@@ -58,29 +59,36 @@ pub fn query_unlocked_tokens(
     denom: Option<String>,
 ) -> StdResult<UnlockedTokensResponse> {
     // set `owner` for querying tokens
-    let owner: Addr;
-    if let Some(val) = address {
-        owner = deps.api.addr_validate(&val)?;
+    let owner = if let Some(val) = address {
+        deps.api.addr_validate(&val)?
     } else {
-        owner = info.sender;
+        info.sender
     };
 
     // result contains either a single token for the given denom or all
     // unlocked tokens for the given owner
-    let vtokens: Vec<Coin>;
-    if let Some(denom) = denom {
-        let res = VTOKENS.load(deps.storage, (owner, &denom))?;
-        if res.status != Status::Unlocked {
-            return Err(StdError::GenericErr {
-                msg: String::from("No unlocked tokens for given denom"),
-            });
-        }
-        vtokens = vec![res.vtoken];
-    } else {
-        vtokens = UNLOCKED.load(deps.storage, owner)?;
-    }
+    let tokens = UNLOCKED.may_load(deps.storage, owner)?;
 
-    Ok(UnlockedTokensResponse { tokens: vtokens })
+    let mut unlocking_tokens = if let Some(val) = tokens {
+        val
+    } else {
+        return Err(StdError::NotFound {
+            kind: "No unlocked tokens".into(),
+        });
+    };
+
+    unlocking_tokens = if let Some(val) = denom {
+        unlocking_tokens
+            .into_iter()
+            .filter(|el| el.denom == val)
+            .collect()
+    } else {
+        unlocking_tokens
+    };
+
+    Ok(UnlockedTokensResponse {
+        tokens: unlocking_tokens,
+    })
 }
 
 pub fn query_locked_tokens(
@@ -100,20 +108,28 @@ pub fn query_locked_tokens(
 
     // result contains either a single token for the given denom or all
     // locked tokens for the given owner
-    let vtokens: Vec<Coin>;
-    if let Some(denom) = denom {
-        let res = VTOKENS.load(deps.storage, (owner, &denom))?;
-        if res.status != Status::Locked {
-            return Err(StdError::GenericErr {
-                msg: String::from("No locked tokens for given denom"),
-            });
-        }
-        vtokens = vec![res.vtoken];
-    } else {
-        vtokens = LOCKED.load(deps.storage, owner)?;
-    }
+    let tokens = LOCKED.may_load(deps.storage, owner)?;
 
-    Ok(LockedTokensResponse { tokens: vtokens })
+    let mut locked_tokens = if let Some(val) = tokens {
+        val
+    } else {
+        return Err(StdError::NotFound {
+            kind: "No locked tokens".into(),
+        });
+    };
+
+    locked_tokens = if let Some(val) = denom {
+        locked_tokens
+            .into_iter()
+            .filter(|el| el.denom == val)
+            .collect()
+    } else {
+        locked_tokens
+    };
+
+    Ok(LockedTokensResponse {
+        tokens: locked_tokens,
+    })
 }
 
 pub fn query_unlocking_tokens(
@@ -124,29 +140,36 @@ pub fn query_unlocking_tokens(
     denom: Option<String>,
 ) -> StdResult<UnlockingTokensResponse> {
     // set `owner` for querying tokens
-    let owner: Addr;
-    if let Some(val) = address {
-        owner = deps.api.addr_validate(&val)?;
+    let owner = if let Some(val) = address {
+        deps.api.addr_validate(&val)?
     } else {
-        owner = info.sender;
+        info.sender
     };
 
     // result contains either a single token for the given denom or all
     // locked tokens for the given owner
-    let vtokens: Vec<Coin>;
-    if let Some(denom) = denom {
-        let res = VTOKENS.load(deps.storage, (owner, &denom))?;
-        if res.status != Status::Unlocking {
-            return Err(StdError::GenericErr {
-                msg: String::from("No unlocking tokens for given denom"),
-            });
-        }
-        vtokens = vec![res.vtoken];
-    } else {
-        vtokens = UNLOCKING.load(deps.storage, owner)?;
-    }
+    let mut tokens = UNLOCKING.may_load(deps.storage, owner)?;
 
-    Ok(UnlockingTokensResponse { tokens: vtokens })
+    let mut unlocking_tokens = if let Some(val) = tokens {
+        val
+    } else {
+        return Err(StdError::NotFound {
+            kind: "No unlocking tokens".into(),
+        });
+    };
+
+    unlocking_tokens = if let Some(val) = denom {
+        unlocking_tokens
+            .into_iter()
+            .filter(|el| el.denom == val)
+            .collect()
+    } else {
+        unlocking_tokens
+    };
+
+    Ok(UnlockingTokensResponse {
+        tokens: unlocking_tokens,
+    })
 }
 
 pub fn query_issued_vtokens(
@@ -198,54 +221,163 @@ mod tests {
     }
 
     #[test]
-    fn test_get_unlocked_tokens() {
+    fn unlocked_tokens() {
         let mut deps = mock_dependencies();
         let env = mock_env();
-        let info = mock_info("sender", &coins(0, DENOM.to_string()));
+        let info = mock_info("owner", &coins(0, DENOM.to_string()));
 
-        let imsg = init_msg();
-        instantiate(deps.as_mut(), env.clone(), info.clone(), imsg.clone()).unwrap();
+        let owner = Addr::unchecked("owner");
 
-        let msg = ExecuteMsg::Lock {
-            app_id: 12,
-            locking_period: LockingPeriod::T1,
-        };
-
-        let info = mock_info("user1", &coins(100, DENOM.to_string()));
-
-        execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-
-        let mut vtoken = VTOKENS
-            .load(&deps.storage, (info.sender.clone(), &info.funds[0].denom))
-            .unwrap();
-        vtoken.status = Status::Unlocked;
-        assert_eq!(vtoken.token.denom, DENOM.to_string());
-        assert_eq!(vtoken.status, Status::Unlocked);
-        VTOKENS
-            .save(
-                &mut deps.storage,
-                (info.sender.clone(), &info.funds[0].denom),
-                &vtoken,
-            )
-            .unwrap();
-        let vtoken = VTOKENS
-            .load(&deps.storage, (info.sender.clone(), &info.funds[0].denom))
+        // Save some tokens in UNLOCKED
+        let unlocked_tokens = vec![
+            Coin {
+                amount: Uint128::from(1000u128),
+                denom: "DNM1".to_string(),
+            },
+            Coin {
+                amount: Uint128::from(2000u128),
+                denom: "DNM2".to_string(),
+            },
+        ];
+        UNLOCKED
+            .save(deps.as_mut().storage, owner.clone(), &unlocked_tokens)
             .unwrap();
 
+        // Query unlocked tokens for specific denom
         let res = query_unlocked_tokens(
             deps.as_ref(),
-            env,
+            env.clone(),
             info.clone(),
-            Option::Some(info.sender.to_string()),
-            Option::Some(info.funds[0].denom.to_string()),
+            Some(owner.to_string()),
+            Some("DNM1".to_string()),
         )
         .unwrap();
-        // Should get vtokens
-        assert_eq!(
-            res,
-            UnlockedTokensResponse {
-                tokens: vec![vtoken.vtoken]
-            }
-        );
+
+        assert_eq!(res.tokens.len(), 1);
+        assert_eq!(res.tokens[0].amount.u128(), 1000);
+        assert_eq!(res.tokens[0].denom, "DNM1".to_string());
+
+        // Query all tokens
+        let res =
+            query_unlocked_tokens(deps.as_ref(), env.clone(), info.clone(), None, None).unwrap();
+        assert_eq!(res.tokens.len(), 2);
+        assert_eq!(res.tokens[0].denom, "DNM1".to_string());
+        assert_eq!(res.tokens[0].amount.u128(), 1000u128);
+        assert_eq!(res.tokens[1].denom, "DNM2".to_string());
+        assert_eq!(res.tokens[1].amount.u128(), 2000u128);
+    }
+
+    #[test]
+    fn unlocking_tokens() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("owner", &coins(0, DENOM.to_string()));
+
+        // Instantiate the contract
+        // let imsg = init_msg();
+        // instantiate(deps.as_mut(), env.clone(), info.clone(), imsg.clone()).unwrap();
+
+        let owner = Addr::unchecked("owner");
+
+        // Save some tokens in UNLOCKING
+        let mut unlocking_tokens = vec![Coin {
+            denom: DENOM.to_string(),
+            amount: Uint128::from(100u32),
+        }];
+        UNLOCKING
+            .save(deps.as_mut().storage, owner.clone(), &unlocking_tokens)
+            .unwrap();
+
+        let unlocking_coins = UNLOCKING
+            .load(deps.as_ref().storage, owner.clone())
+            .unwrap();
+        assert_eq!(unlocking_coins.len(), 1);
+        assert_eq!(unlocking_coins[0].amount.u128(), 100u128);
+        assert_eq!(unlocking_coins[0].denom, DENOM.to_string());
+
+        // Query the UNLOCKING map
+        let res = query_unlocking_tokens(
+            deps.as_ref(),
+            env.clone(),
+            info.clone(),
+            Some(owner.to_string()),
+            Some(DENOM.to_string()),
+        )
+        .unwrap();
+        assert_eq!(res.tokens.len(), 1);
+        assert_eq!(res.tokens[0].amount.u128(), 100u128);
+        assert_eq!(res.tokens[0].denom, DENOM.to_string());
+
+        // Save another token denom
+        unlocking_tokens.push(Coin {
+            denom: "DNM1".to_string(),
+            amount: Uint128::from(100u32),
+        });
+        UNLOCKING
+            .save(deps.as_mut().storage, owner.clone(), &unlocking_tokens)
+            .unwrap();
+
+        let unlocking_coins = UNLOCKING
+            .load(deps.as_ref().storage, owner.clone())
+            .unwrap();
+        assert_eq!(unlocking_coins.len(), 2);
+        assert_eq!(unlocking_coins[0].amount.u128(), 100u128);
+        assert_eq!(unlocking_coins[0].denom, DENOM.to_string());
+        assert_eq!(unlocking_coins[1].amount.u128(), 100u128);
+        assert_eq!(unlocking_coins[1].denom, "DNM1".to_string());
+
+        // Query with specific denom
+        let res = query_unlocking_tokens(
+            deps.as_ref(),
+            env.clone(),
+            info.clone(),
+            Some(owner.to_string()),
+            Some(DENOM.to_string()),
+        )
+        .unwrap();
+        assert_eq!(res.tokens.len(), 1);
+        assert_eq!(res.tokens[0].amount.u128(), 100u128);
+        assert_eq!(res.tokens[0].denom, DENOM.to_string());
+
+        // Query without a specific denom
+        let res = query_unlocking_tokens(
+            deps.as_ref(),
+            env.clone(),
+            info.clone(),
+            Some(owner.to_string()),
+            None,
+        )
+        .unwrap();
+        assert_eq!(res.tokens.len(), 2);
+        assert_eq!(res.tokens[0].amount.u128(), 100u128);
+        assert_eq!(res.tokens[0].denom, DENOM.to_string());
+        assert_eq!(res.tokens[1].amount.u128(), 100u128);
+        assert_eq!(res.tokens[1].denom, "DNM1".to_string());
+    }
+
+    #[test]
+    fn locked_tokens() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("owner", &coins(0, "DNM1".to_string()));
+
+        let owner = Addr::unchecked("owner");
+
+        let locked_tokens = coins(1000, "DNM1".to_string());
+        LOCKED
+            .save(deps.as_mut().storage, owner.clone(), &locked_tokens)
+            .unwrap();
+
+        let res = query_locked_tokens(
+            deps.as_ref(),
+            env.clone(),
+            info.clone(),
+            Some(owner.to_string()),
+            Some("DNM1".into()),
+        )
+        .unwrap();
+        assert_eq!(res.tokens.len(), 1);
+        assert_eq!(res.tokens[0].amount.u128(), 1000);
+        assert_eq!(res.tokens[0].denom, "DNM1".to_string());
     }
 }
