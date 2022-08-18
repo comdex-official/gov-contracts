@@ -1,6 +1,6 @@
 use crate::state::Votes;
 use comdex_bindings::ComdexMessages;
-use cosmwasm_std::{Decimal, Timestamp};
+use cosmwasm_std::{Decimal, Timestamp,Addr};
 use cw3::{Status, Vote};
 use cw_utils::{Duration, Expiration, Threshold};
 use schemars::JsonSchema;
@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct InstantiateMsg {
     pub threshold: Threshold,
-
+    pub locking_contract:Addr,
     pub target: String,
 }
 
@@ -115,4 +115,12 @@ pub enum QueryMsg {
     AppAllUpData {
         app_id: u64,
     },
+    Supply {
+        denom: String,
+    },
+    TotalVTokens
+    {
+        address:Addr,
+        denom:String
+    }
 }

@@ -5,11 +5,11 @@ use crate::msg::{
 };
 use crate::state::{
     next_id, AppGovConfig, Ballot, Config, Proposal, Votes, APPGOVCONFIG, APPPROPOSALS, BALLOTS,
-    CONFIG, PROPOSALS, PROPOSALSBYAPP, VOTERDEPOSIT,
+    CONFIG, PROPOSALS, PROPOSALSBYAPP, VOTERDEPOSIT,TokenSupply
 };
 use crate::validation::{
     add_extended_pair_vault, auction_mapping_for_app, collector_lookup_table, get_token_supply,
-    query_app_exists, query_get_asset_data, query_owner_token_at_height,
+    query_app_exists, query_get_asset_data,
     remove_whitelist_app_id_liquidation, remove_whitelist_app_id_vault_interest,
     remove_whitelist_asset_locker, update_locker_lsr, update_pairvault_stability,
     validate_threshold, whitelist_app_id_liquidation, whitelist_app_id_vault_interest,
@@ -19,7 +19,7 @@ use comdex_bindings::{ComdexMessages, ComdexQuery};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::{
     entry_point, to_binary, BankMsg, Binary, BlockInfo, Coin, Deps, DepsMut, Env, MessageInfo,
-    Order, Response, StdResult, Uint128,
+    Order, Response, StdResult, Uint128,QueryRequest,WasmQuery
 };
 use cw2::set_contract_version;
 use cw3::{
@@ -58,6 +58,7 @@ pub fn instantiate(
     let cfg = Config {
         threshold: msg.threshold,
         target: msg.target,
+        locking_contract: msg.locking_contract,
     };
     CONFIG.save(deps.storage, &cfg)?;
     Ok(Response::default())
@@ -114,24 +115,36 @@ pub fn execute_propose(
         return Err(ContractError::NoGovToken {});
     }
 
-    //get total supply for denom to get proposal weight
-    let total_weight = get_token_supply(deps.as_ref(), propose.app_id_param, gov_token_id)?;
+    let cfg = CONFIG.load(deps.storage)?;
+
+    let query_msg = QueryMsg:: Supply {
+        denom: gov_token_denom.clone(),
+    };
+    let query_response:TokenSupply = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: cfg.locking_contract.to_string(),
+        msg: to_binary(&query_msg).unwrap(),
+    }))?;
+
+    let total_weight=query_response.vtoken as u64;
     if total_weight == 0 {
         return Err(ContractError::ZeroSupply {});
     }
 
     let cfg = CONFIG.load(deps.storage)?;
-    let height = env.block.height - 1;
 
-    //Calculate proposer voting Power
+    let query_msg = QueryMsg:: TotalVTokens {
+        denom: gov_token_denom.clone(),
+        address: info.sender.clone(),
+    };
+    let balance_response:Uint128 = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: cfg.locking_contract.to_string(),
+        msg: to_binary(&query_msg).unwrap(),
+    }))?;
 
-    let voting_power = query_owner_token_at_height(
-        deps.as_ref(),
-        info.sender.to_string(),
-        gov_token_denom.to_string(),
-        height.to_string(),
-        cfg.target,
-    )?;
+    let voting_power=Coin{amount:balance_response,denom:gov_token_denom.clone()};
+
+
+
 
     // max expires also used as default
     let max_expires = max_voting_period.after(&env.block);
@@ -433,20 +446,30 @@ pub fn execute_vote(
 
     //Get Proposal Start Height
     //Checking voting power 1 block prior to block height when proposal was raised
-    let vote_power_height = prop.start_height - 1;
+    //let vote_power_height = prop.start_height - 1;
 
     let cfg = CONFIG.load(deps.storage)?;
     let token_denom = &prop.token_denom;
 
     //Get Voter power at proposal height -1
-    let voting_power = query_owner_token_at_height(
-        deps.as_ref(),
-        info.sender.to_string(),
-        token_denom.to_string(),
-        vote_power_height.to_string(),
-        cfg.target,
-    )?;
+    // let voting_power = query_owner_token_at_height(
+    //     deps.as_ref(),
+    //     info.sender.to_string(),
+    //     token_denom.to_string(),
+    //     vote_power_height.to_string(),
+    //     cfg.target,
+    // )?;
 
+    let query_msg = QueryMsg:: TotalVTokens {
+        denom: token_denom.to_string(),
+        address: info.sender.clone(),
+    };
+    let balance_response:Uint128 = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: cfg.locking_contract.to_string(),
+        msg: to_binary(&query_msg).unwrap(),
+    }))?;
+
+    let voting_power=Coin{amount:balance_response,denom:token_denom.clone()};
     //check previous vote (if any) in order to change previous vote weights
     let previous_vote = BALLOTS.may_load(deps.storage, (proposal_id, &info.sender))?;
 
@@ -684,6 +707,8 @@ pub fn query(deps: Deps<ComdexQuery>, env: Env, msg: QueryMsg) -> StdResult<Bina
             to_binary(&get_proposals_by_app(deps, env, app_id)?)
         }
         QueryMsg::AppAllUpData { app_id } => to_binary(&get_all_up_info_by_app(deps, env, app_id)?),
+
+        _ =>panic!("Not implemented"),
     }
 }
 
@@ -908,18 +933,23 @@ mod tests {
             let not_acceptable_msg1 = InstantiateMsg{
                 threshold:Threshold::AbsoluteCount { weight: 10 },
                 target:Duration::Height(3).to_string(),
+                locking_contract:Addr::unchecked("locking_contract")
             };
 
             let not_acceptable_msg2 = InstantiateMsg{
                 threshold:Threshold::AbsolutePercentage { percentage:Decimal::percent(50) },
                 target:Duration::Height(3).to_string(),
+                locking_contract:Addr::unchecked("locking_contract")
+
             };
 
             let expected_msg = InstantiateMsg{
                 threshold:Threshold::ThresholdQuorum { 
-                    threshold: Decimal::percent(50),
-                    quorum: Decimal::percent(33) },
+                threshold: Decimal::percent(50),
+                quorum: Decimal::percent(33) },
                 target:Duration::Height(3).to_string(),
+                locking_contract:Addr::unchecked("locking_contract")
+
             };
             
 
@@ -1312,6 +1342,8 @@ mod tests {
                 threshold: Decimal::percent(50),
                 quorum: Decimal::percent(33) },
             target:Duration::Height(3).to_string(),
+            locking_contract:Addr::unchecked("locking_contract")
+
         };
         instantiate(deps.as_mut(), mock_env(), info.clone(), expected_msg).unwrap();
         let mut prop = Proposal {
@@ -1383,6 +1415,8 @@ mod tests {
                 threshold: Decimal::percent(50),
                 quorum: Decimal::percent(33) },
             target:Duration::Height(3).to_string(),
+            locking_contract:Addr::unchecked("locking_contract")
+
         };
         instantiate(deps.as_mut(), mock_env(), info.clone(), expected_msg).unwrap();
         let mut prop = Proposal {
@@ -1476,6 +1510,8 @@ mod tests {
                 threshold: Decimal::percent(50),
                 quorum: Decimal::percent(33) },
             target:Duration::Height(3).to_string(),
+            locking_contract:Addr::unchecked("locking_contract")
+
         };
         _=CONFIG.save(&mut deps.storage, &cfg);
 
