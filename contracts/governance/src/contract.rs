@@ -1,7 +1,7 @@
 use crate::coin_helpers::assert_sent_sufficient_coin_deposit;
 use crate::error::ContractError;
 use crate::msg::{
-    ExecuteMsg, ExtendedPair, InstantiateMsg, ProposalResponseTotal, Propose, QueryMsg,
+    ExecuteMsg, ExtendedPair, InstantiateMsg, ProposalResponseTotal, Propose, QueryMsg,SudoMsg,MigrateMsg
 };
 use crate::state::{
     next_id, AppGovConfig, Ballot, Config, Proposal, Votes, APPGOVCONFIG, APPPROPOSALS, BALLOTS,
@@ -19,7 +19,7 @@ use comdex_bindings::{ComdexMessages, ComdexQuery};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::{
     entry_point, to_binary, BankMsg, Binary, BlockInfo, Coin, Deps, DepsMut, Env, MessageInfo,
-    Order, Response, StdResult, Uint128,QueryRequest,WasmQuery
+    Order, Response, StdResult, Uint128,QueryRequest,WasmQuery,StdError
 };
 use cw2::set_contract_version;
 use cw3::{
@@ -885,6 +885,26 @@ fn list_votes(
         .collect::<StdResult<_>>()?;
 
     Ok(VoteListResponse { votes })
+}
+
+#[entry_point]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    let ver = cw2::get_contract_version(deps.storage)?;
+    // ensure we are migrating from an allowed contract
+    if ver.contract != CONTRACT_NAME {
+        return Err(StdError::generic_err("Can only upgrade from same type").into());
+    }
+    // note: better to do proper semver compare, but string compare *usually* works
+    if ver.version > CONTRACT_VERSION.to_string() {
+        return Err(StdError::generic_err("Cannot upgrade from a newer version").into());
+    }
+
+    // set the new version
+    cw2::set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    // do any desired state migrations...
+
+    Ok(Response::default())
 }
 
 #[cfg(test)]

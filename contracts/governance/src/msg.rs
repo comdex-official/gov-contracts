@@ -124,3 +124,15 @@ pub enum QueryMsg {
         denom:String
     }
 }
+
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum SudoMsg {
+    UpdateVestingContract {
+        address: Addr,
+    },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct MigrateMsg {}
