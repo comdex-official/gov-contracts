@@ -62,6 +62,19 @@ pub fn instantiate(
     };
     CONFIG.save(deps.storage, &cfg)?;
     Ok(Response::default())
+
+}#[entry_point]
+pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
+    match msg {
+        SudoMsg::UpdateLockingContract { address } => {
+            let mut cfg = CONFIG.load(deps.storage)?;
+
+            cfg.locking_contract=address;
+            CONFIG.save(deps.storage,&cfg)?;
+            Ok(Response::new())
+        }
+
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
