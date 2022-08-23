@@ -136,6 +136,7 @@ pub enum SudoMsg {
     UpdateLockingContract {
         address: Addr,
     },
+    UpdateThreshold{threshold : Threshold},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

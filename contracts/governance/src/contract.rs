@@ -73,6 +73,13 @@ pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, Contract
             CONFIG.save(deps.storage,&cfg)?;
             Ok(Response::new())
         }
+        SudoMsg::UpdateThreshold { threshold } => {
+            let mut cfg = CONFIG.load(deps.storage)?;
+
+            cfg.threshold=threshold;
+            CONFIG.save(deps.storage,&cfg)?;
+            Ok(Response::new())
+        }
 
     }
 }
@@ -207,11 +214,11 @@ pub fn execute_propose(
             )?,
             ComdexMessages::MsgWhitelistAppIdLockerRewards {
                 app_id,
-                asset_ids,
+                asset_id,
             } => whitelist_asset_locker_rewards(
                 deps.as_ref(),
                 app_id,
-                asset_ids,
+                asset_id,
                 propose.app_id_param,
             )?,
             ComdexMessages::MsgWhitelistAppIdVaultInterest { app_id } => {
@@ -457,21 +464,11 @@ pub fn execute_vote(
         return Err(ContractError::NotOpen {});
     }
 
-    //Get Proposal Start Height
-    //Checking voting power 1 block prior to block height when proposal was raised
-    //let vote_power_height = prop.start_height - 1;
 
     let cfg = CONFIG.load(deps.storage)?;
     let token_denom = &prop.token_denom;
 
-    //Get Voter power at proposal height -1
-    // let voting_power = query_owner_token_at_height(
-    //     deps.as_ref(),
-    //     info.sender.to_string(),
-    //     token_denom.to_string(),
-    //     vote_power_height.to_string(),
-    //     cfg.target,
-    // )?;
+
 
     let query_msg = QueryMsg:: TotalVTokens {
         denom: token_denom.to_string(),
