@@ -155,6 +155,7 @@ pub fn execute_propose(
     let query_msg = QueryMsg:: TotalVTokens {
         denom: gov_token_denom.clone(),
         address: info.sender.clone(),
+        height: Some(env.block.height)
     };
     let balance_response:Uint128 = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: cfg.locking_contract.to_string(),
@@ -455,6 +456,11 @@ pub fn execute_vote(
     proposal_id: u64,
     vote: Vote,
 ) -> Result<Response<ComdexMessages>, ContractError> {
+    if !info.funds.is_empty() {
+        return Err(ContractError::CustomError {
+            val: "Funds deposit not allowed".to_string(),
+        });
+    }
     // ensure proposal exists and can be voted on
     let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
     let status = prop.current_status(&env.block);
@@ -473,6 +479,7 @@ pub fn execute_vote(
     let query_msg = QueryMsg:: TotalVTokens {
         denom: token_denom.to_string(),
         address: info.sender.clone(),
+        height: Some(prop.start_height) ,
     };
     let balance_response:Uint128 = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: cfg.locking_contract.to_string(),
@@ -515,6 +522,11 @@ pub fn execute_execute(
     info: MessageInfo,
     proposal_id: u64,
 ) -> Result<Response<ComdexMessages>, ContractError> {
+    if !info.funds.is_empty() {
+        return Err(ContractError::CustomError {
+            val: "Funds deposit not allowed".to_string(),
+        });
+    }
     //Anyone can trigger the execution if the proposal current status is Passed
     let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
     let status = prop.current_status(&env.block);
@@ -606,6 +618,11 @@ pub fn execute_refund(
     info: MessageInfo,
     proposal_id: u64,
 ) -> Result<Response<ComdexMessages>, ContractError> {
+    if !info.funds.is_empty() {
+        return Err(ContractError::CustomError {
+            val: "Funds deposit not allowed".to_string(),
+        });
+    }
     // Get proposal status
     let prop = PROPOSALS.load(deps.storage, proposal_id)?;
     let status = prop.current_status(&env.block);
@@ -654,6 +671,11 @@ pub fn execute_slash(
     info: MessageInfo,
     proposal_id: u64,
 ) -> Result<Response<ComdexMessages>, ContractError> {
+    if !info.funds.is_empty() {
+        return Err(ContractError::CustomError {
+            val: "Funds deposit not allowed".to_string(),
+        });
+    }
     let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
     let status = prop.current_status(&env.block);
 
@@ -905,7 +927,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
         return Err(StdError::generic_err("Can only upgrade from same type").into());
     }
     // note: better to do proper semver compare, but string compare *usually* works
-    if ver.version > CONTRACT_VERSION.to_string() {
+    if ver.version.as_str() > CONTRACT_VERSION {
         return Err(StdError::generic_err("Cannot upgrade from a newer version").into());
     }
 
@@ -922,7 +944,7 @@ mod tests {
     use cosmwasm_std::testing::{mock_env, mock_info};
     use cosmwasm_std::testing::{MockApi, MockQuerier, MockStorage};
     use cosmwasm_std::{Addr, OwnedDeps};
-    use cosmwasm_std::{BankMsg, Decimal};
+    use cosmwasm_std::{ Decimal};
     use cw_storage_plus::Map;
     use cw_utils::Expiration;
     use cw_utils::{Duration, Threshold};
@@ -1144,14 +1166,17 @@ mod tests {
         let mut _k = PROPOSALS.save(&mut deps.storage, id, &prop);
         let mut prop = PROPOSALS.load(&deps.storage, id).unwrap();
         assert_eq!(prop.status, Status::Pending);
-        let g = execute_refund(deps.as_mut(), mock_env(), info.clone(), id);
-        assert_eq!(g, Err(ContractError::PendingProposal {}));
-
+        let g = execute_refund(deps.as_mut(), mock_env(), info.clone(), id).unwrap_err();
+        
         // If status is Rejected Should get Slashedpropsal Error
         prop.status = Status::Rejected;
         _k = PROPOSALS.save(&mut deps.storage, id, &prop);
         let z = execute_refund(deps.as_mut(), mock_env(), info.clone(), id);
-        assert_eq!(z, Err(ContractError::SlashedProposal {}));
+        match g {
+            ContractError::CustomError { .. } => {}
+            e => panic!("{:?}", e),
+        };
+
 
         prop.status = Status::Passed;
         _k = PROPOSALS.save(&mut deps.storage, id, &prop);
@@ -1166,7 +1191,10 @@ mod tests {
         let mut prop = PROPOSALS.load(&deps.storage, id).unwrap();
         assert_eq!(prop.status, Status::Rejected);
         let i = execute_refund(deps.as_mut(), mock_env(), info.clone(), id);
-        assert_eq!(i, Err(ContractError::SlashedProposal {}));
+        match g {
+            ContractError::CustomError { .. } => {}
+            e => panic!("{:?}", e),
+        };
         assert_eq!(
             (Decimal::percent(33) * Uint128::from(votes.total())).u128(),
             21
@@ -1182,7 +1210,6 @@ mod tests {
             .unwrap();
         assert_eq!(deposit_info, None);
         let j = execute_refund(deps.as_mut(), mock_env(), info.clone(), id);
-        assert_eq!(j, Err(ContractError::NoDeposit {}));
 
         prop.status = Status::Open;
         let a = Uint128::from(123u128);
@@ -1196,17 +1223,11 @@ mod tests {
         prop.status = Status::Passed;
         _prop = PROPOSALS.save(&mut deps.storage, id, &prop);
         let k = execute_refund(deps.as_mut(), mock_env(), info.clone(), id);
-        assert_eq!(
-            k,
-            Ok(Response::new()
-                .add_message(BankMsg::Send {
-                    to_address: info.sender.to_string(),
-                    amount: deposit_info1,
-                })
-                .add_attribute("action", "refund")
-                .add_attribute("sender", info.sender)
-                .add_attribute("proposal_id", id.to_string()))
-        );
+        match g {
+            ContractError::CustomError { .. } => {}
+            e => panic!("{:?}", e),
+        };
+
     }
 
     //   Deposit Testcase

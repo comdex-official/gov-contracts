@@ -125,7 +125,8 @@ pub enum QueryMsg {
     TotalVTokens
     {
         address:Addr,
-        denom:String
+        denom:String,
+        height: Option<u64>
     }
 }
 

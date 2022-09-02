@@ -7,6 +7,9 @@ use thiserror::Error;
 pub enum ContractError {
     #[error("Proposal is not eligible")]
     ProposalNotEligible {},
+    #[error("Custom Error val: {val:?}")]
+
+    CustomError { val: String },
 
     #[error("{0}")]
     Std(#[from] StdError),
