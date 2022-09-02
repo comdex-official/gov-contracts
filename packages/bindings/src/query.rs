@@ -27,7 +27,7 @@ pub enum ComdexQuery {
     },
     WhitelistAppIdLockerRewards {
         app_id: u64,
-        asset_id: Vec<u64>,
+        asset_id: u64,
     },
     WhitelistAppIdVaultInterest {
         app_id: u64,

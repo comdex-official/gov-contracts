@@ -18,7 +18,7 @@ iterator = ["cosmwasm-std/iterator"]
 bench = false
 
 [dependencies]
-cosmwasm-std = { version = "1.0.0-beta8", default-features = false }
+cosmwasm-std = { version = "1.0.0", default-features = false }
 schemars = "0.8.1"
 serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 
@@ -29,3 +29,11 @@ rand = "0.8"
 [[bench]]
 name = "main"
 harness = false
+
+[profile.release]
+rpath = false
+lto = true
+overflow-checks = true
+opt-level = 3
+debug = false
+debug-assertions = false

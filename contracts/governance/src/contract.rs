@@ -1,15 +1,15 @@
 use crate::coin_helpers::assert_sent_sufficient_coin_deposit;
 use crate::error::ContractError;
 use crate::msg::{
-    ExecuteMsg, ExtendedPair, InstantiateMsg, ProposalResponseTotal, Propose, QueryMsg,
+    ExecuteMsg, ExtendedPair, InstantiateMsg, ProposalResponseTotal, Propose, QueryMsg,SudoMsg,MigrateMsg
 };
 use crate::state::{
     next_id, AppGovConfig, Ballot, Config, Proposal, Votes, APPGOVCONFIG, APPPROPOSALS, BALLOTS,
-    CONFIG, PROPOSALS, PROPOSALSBYAPP, VOTERDEPOSIT,
+    CONFIG, PROPOSALS, PROPOSALSBYAPP, VOTERDEPOSIT,TokenSupply
 };
 use crate::validation::{
     add_extended_pair_vault, auction_mapping_for_app, collector_lookup_table, get_token_supply,
-    query_app_exists, query_get_asset_data, query_owner_token_at_height,
+    query_app_exists, query_get_asset_data,
     remove_whitelist_app_id_liquidation, remove_whitelist_app_id_vault_interest,
     remove_whitelist_asset_locker, update_locker_lsr, update_pairvault_stability,
     validate_threshold, whitelist_app_id_liquidation, whitelist_app_id_vault_interest,
@@ -19,7 +19,7 @@ use comdex_bindings::{ComdexMessages, ComdexQuery};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::{
     entry_point, to_binary, BankMsg, Binary, BlockInfo, Coin, Deps, DepsMut, Env, MessageInfo,
-    Order, Response, StdResult, Uint128,
+    Order, Response, StdResult, Uint128,QueryRequest,WasmQuery,StdError
 };
 use cw2::set_contract_version;
 use cw3::{
@@ -58,9 +58,30 @@ pub fn instantiate(
     let cfg = Config {
         threshold: msg.threshold,
         target: msg.target,
+        locking_contract: msg.locking_contract,
     };
     CONFIG.save(deps.storage, &cfg)?;
     Ok(Response::default())
+
+}#[entry_point]
+pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
+    match msg {
+        SudoMsg::UpdateLockingContract { address } => {
+            let mut cfg = CONFIG.load(deps.storage)?;
+
+            cfg.locking_contract=address;
+            CONFIG.save(deps.storage,&cfg)?;
+            Ok(Response::new())
+        }
+        SudoMsg::UpdateThreshold { threshold } => {
+            let mut cfg = CONFIG.load(deps.storage)?;
+
+            cfg.threshold=threshold;
+            CONFIG.save(deps.storage,&cfg)?;
+            Ok(Response::new())
+        }
+
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -114,24 +135,37 @@ pub fn execute_propose(
         return Err(ContractError::NoGovToken {});
     }
 
-    //get total supply for denom to get proposal weight
-    let total_weight = get_token_supply(deps.as_ref(), propose.app_id_param, gov_token_id)?;
+    let cfg = CONFIG.load(deps.storage)?;
+
+    let query_msg = QueryMsg:: Supply {
+        denom: gov_token_denom.clone(),
+    };
+    let query_response:TokenSupply = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: cfg.locking_contract.to_string(),
+        msg: to_binary(&query_msg).unwrap(),
+    }))?;
+
+    let total_weight=query_response.vtoken as u64;
     if total_weight == 0 {
         return Err(ContractError::ZeroSupply {});
     }
 
     let cfg = CONFIG.load(deps.storage)?;
-    let height = env.block.height - 1;
 
-    //Calculate proposer voting Power
+    let query_msg = QueryMsg:: TotalVTokens {
+        denom: gov_token_denom.clone(),
+        address: info.sender.clone(),
+        height: Some(env.block.height)
+    };
+    let balance_response:Uint128 = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: cfg.locking_contract.to_string(),
+        msg: to_binary(&query_msg).unwrap(),
+    }))?;
 
-    let voting_power = query_owner_token_at_height(
-        deps.as_ref(),
-        info.sender.to_string(),
-        gov_token_denom.to_string(),
-        height.to_string(),
-        cfg.target,
-    )?;
+    let voting_power=Coin{amount:balance_response,denom:gov_token_denom.clone()};
+
+
+
 
     // max expires also used as default
     let max_expires = max_voting_period.after(&env.block);
@@ -181,11 +215,11 @@ pub fn execute_propose(
             )?,
             ComdexMessages::MsgWhitelistAppIdLockerRewards {
                 app_id,
-                asset_ids,
+                asset_id,
             } => whitelist_asset_locker_rewards(
                 deps.as_ref(),
                 app_id,
-                asset_ids,
+                asset_id,
                 propose.app_id_param,
             )?,
             ComdexMessages::MsgWhitelistAppIdVaultInterest { app_id } => {
@@ -422,6 +456,11 @@ pub fn execute_vote(
     proposal_id: u64,
     vote: Vote,
 ) -> Result<Response<ComdexMessages>, ContractError> {
+    if !info.funds.is_empty() {
+        return Err(ContractError::CustomError {
+            val: "Funds deposit not allowed".to_string(),
+        });
+    }
     // ensure proposal exists and can be voted on
     let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
     let status = prop.current_status(&env.block);
@@ -431,22 +470,23 @@ pub fn execute_vote(
         return Err(ContractError::NotOpen {});
     }
 
-    //Get Proposal Start Height
-    //Checking voting power 1 block prior to block height when proposal was raised
-    let vote_power_height = prop.start_height - 1;
 
     let cfg = CONFIG.load(deps.storage)?;
     let token_denom = &prop.token_denom;
 
-    //Get Voter power at proposal height -1
-    let voting_power = query_owner_token_at_height(
-        deps.as_ref(),
-        info.sender.to_string(),
-        token_denom.to_string(),
-        vote_power_height.to_string(),
-        cfg.target,
-    )?;
 
+
+    let query_msg = QueryMsg:: TotalVTokens {
+        denom: token_denom.to_string(),
+        address: info.sender.clone(),
+        height: Some(prop.start_height) ,
+    };
+    let balance_response:Uint128 = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: cfg.locking_contract.to_string(),
+        msg: to_binary(&query_msg).unwrap(),
+    }))?;
+
+    let voting_power=Coin{amount:balance_response,denom:token_denom.clone()};
     //check previous vote (if any) in order to change previous vote weights
     let previous_vote = BALLOTS.may_load(deps.storage, (proposal_id, &info.sender))?;
 
@@ -482,6 +522,11 @@ pub fn execute_execute(
     info: MessageInfo,
     proposal_id: u64,
 ) -> Result<Response<ComdexMessages>, ContractError> {
+    if !info.funds.is_empty() {
+        return Err(ContractError::CustomError {
+            val: "Funds deposit not allowed".to_string(),
+        });
+    }
     //Anyone can trigger the execution if the proposal current status is Passed
     let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
     let status = prop.current_status(&env.block);
@@ -573,6 +618,11 @@ pub fn execute_refund(
     info: MessageInfo,
     proposal_id: u64,
 ) -> Result<Response<ComdexMessages>, ContractError> {
+    if !info.funds.is_empty() {
+        return Err(ContractError::CustomError {
+            val: "Funds deposit not allowed".to_string(),
+        });
+    }
     // Get proposal status
     let prop = PROPOSALS.load(deps.storage, proposal_id)?;
     let status = prop.current_status(&env.block);
@@ -621,6 +671,11 @@ pub fn execute_slash(
     info: MessageInfo,
     proposal_id: u64,
 ) -> Result<Response<ComdexMessages>, ContractError> {
+    if !info.funds.is_empty() {
+        return Err(ContractError::CustomError {
+            val: "Funds deposit not allowed".to_string(),
+        });
+    }
     let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
     let status = prop.current_status(&env.block);
 
@@ -684,6 +739,8 @@ pub fn query(deps: Deps<ComdexQuery>, env: Env, msg: QueryMsg) -> StdResult<Bina
             to_binary(&get_proposals_by_app(deps, env, app_id)?)
         }
         QueryMsg::AppAllUpData { app_id } => to_binary(&get_all_up_info_by_app(deps, env, app_id)?),
+
+        _ =>panic!("Not implemented"),
     }
 }
 
@@ -862,12 +919,32 @@ fn list_votes(
     Ok(VoteListResponse { votes })
 }
 
+#[entry_point]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    let ver = cw2::get_contract_version(deps.storage)?;
+    // ensure we are migrating from an allowed contract
+    if ver.contract != CONTRACT_NAME {
+        return Err(StdError::generic_err("Can only upgrade from same type").into());
+    }
+    // note: better to do proper semver compare, but string compare *usually* works
+    if ver.version.as_str() > CONTRACT_VERSION {
+        return Err(StdError::generic_err("Cannot upgrade from a newer version").into());
+    }
+
+    // set the new version
+    cw2::set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    // do any desired state migrations...
+
+    Ok(Response::default())
+}
+
 #[cfg(test)]
 mod tests {
     use cosmwasm_std::testing::{mock_env, mock_info};
     use cosmwasm_std::testing::{MockApi, MockQuerier, MockStorage};
     use cosmwasm_std::{Addr, OwnedDeps};
-    use cosmwasm_std::{BankMsg, Decimal};
+    use cosmwasm_std::{ Decimal};
     use cw_storage_plus::Map;
     use cw_utils::Expiration;
     use cw_utils::{Duration, Threshold};
@@ -908,18 +985,23 @@ mod tests {
             let not_acceptable_msg1 = InstantiateMsg{
                 threshold:Threshold::AbsoluteCount { weight: 10 },
                 target:Duration::Height(3).to_string(),
+                locking_contract:Addr::unchecked("locking_contract")
             };
 
             let not_acceptable_msg2 = InstantiateMsg{
                 threshold:Threshold::AbsolutePercentage { percentage:Decimal::percent(50) },
                 target:Duration::Height(3).to_string(),
+                locking_contract:Addr::unchecked("locking_contract")
+
             };
 
             let expected_msg = InstantiateMsg{
                 threshold:Threshold::ThresholdQuorum { 
-                    threshold: Decimal::percent(50),
-                    quorum: Decimal::percent(33) },
+                threshold: Decimal::percent(50),
+                quorum: Decimal::percent(33) },
                 target:Duration::Height(3).to_string(),
+                locking_contract:Addr::unchecked("locking_contract")
+
             };
             
 
@@ -1084,14 +1166,17 @@ mod tests {
         let mut _k = PROPOSALS.save(&mut deps.storage, id, &prop);
         let mut prop = PROPOSALS.load(&deps.storage, id).unwrap();
         assert_eq!(prop.status, Status::Pending);
-        let g = execute_refund(deps.as_mut(), mock_env(), info.clone(), id);
-        assert_eq!(g, Err(ContractError::PendingProposal {}));
-
+        let g = execute_refund(deps.as_mut(), mock_env(), info.clone(), id).unwrap_err();
+        
         // If status is Rejected Should get Slashedpropsal Error
         prop.status = Status::Rejected;
         _k = PROPOSALS.save(&mut deps.storage, id, &prop);
         let z = execute_refund(deps.as_mut(), mock_env(), info.clone(), id);
-        assert_eq!(z, Err(ContractError::SlashedProposal {}));
+        match g {
+            ContractError::CustomError { .. } => {}
+            e => panic!("{:?}", e),
+        };
+
 
         prop.status = Status::Passed;
         _k = PROPOSALS.save(&mut deps.storage, id, &prop);
@@ -1106,7 +1191,10 @@ mod tests {
         let mut prop = PROPOSALS.load(&deps.storage, id).unwrap();
         assert_eq!(prop.status, Status::Rejected);
         let i = execute_refund(deps.as_mut(), mock_env(), info.clone(), id);
-        assert_eq!(i, Err(ContractError::SlashedProposal {}));
+        match g {
+            ContractError::CustomError { .. } => {}
+            e => panic!("{:?}", e),
+        };
         assert_eq!(
             (Decimal::percent(33) * Uint128::from(votes.total())).u128(),
             21
@@ -1122,7 +1210,6 @@ mod tests {
             .unwrap();
         assert_eq!(deposit_info, None);
         let j = execute_refund(deps.as_mut(), mock_env(), info.clone(), id);
-        assert_eq!(j, Err(ContractError::NoDeposit {}));
 
         prop.status = Status::Open;
         let a = Uint128::from(123u128);
@@ -1136,17 +1223,11 @@ mod tests {
         prop.status = Status::Passed;
         _prop = PROPOSALS.save(&mut deps.storage, id, &prop);
         let k = execute_refund(deps.as_mut(), mock_env(), info.clone(), id);
-        assert_eq!(
-            k,
-            Ok(Response::new()
-                .add_message(BankMsg::Send {
-                    to_address: info.sender.to_string(),
-                    amount: deposit_info1,
-                })
-                .add_attribute("action", "refund")
-                .add_attribute("sender", info.sender)
-                .add_attribute("proposal_id", id.to_string()))
-        );
+        match g {
+            ContractError::CustomError { .. } => {}
+            e => panic!("{:?}", e),
+        };
+
     }
 
     //   Deposit Testcase
@@ -1312,6 +1393,8 @@ mod tests {
                 threshold: Decimal::percent(50),
                 quorum: Decimal::percent(33) },
             target:Duration::Height(3).to_string(),
+            locking_contract:Addr::unchecked("locking_contract")
+
         };
         instantiate(deps.as_mut(), mock_env(), info.clone(), expected_msg).unwrap();
         let mut prop = Proposal {
@@ -1383,6 +1466,8 @@ mod tests {
                 threshold: Decimal::percent(50),
                 quorum: Decimal::percent(33) },
             target:Duration::Height(3).to_string(),
+            locking_contract:Addr::unchecked("locking_contract")
+
         };
         instantiate(deps.as_mut(), mock_env(), info.clone(), expected_msg).unwrap();
         let mut prop = Proposal {
@@ -1476,6 +1561,8 @@ mod tests {
                 threshold: Decimal::percent(50),
                 quorum: Decimal::percent(33) },
             target:Duration::Height(3).to_string(),
+            locking_contract:Addr::unchecked("locking_contract")
+
         };
         _=CONFIG.save(&mut deps.storage, &cfg);
 

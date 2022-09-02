@@ -174,7 +174,7 @@ pub fn remove_whitelist_app_id_liquidation(
 pub fn whitelist_asset_locker_rewards(
     deps: Deps<ComdexQuery>,
     app_mapping_id_param: u64,
-    asset_id_param: Vec<u64>,
+    asset_id_param: u64,
     app_id: u64,
 ) -> Result<(), ContractError> {
     if app_mapping_id_param != app_id {

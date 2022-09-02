@@ -40,12 +40,12 @@ pub enum ComdexMessages {
     },
     MsgSetAuctionMappingForApp {
         app_id: u64,
-        asset_id: Vec<u64>,
-        is_surplus_auction: Vec<bool>,
-        is_distributor: Vec<bool>,
-        is_debt_auction: Vec<bool>,
-        asset_out_oracle_price: Vec<bool>,
-        asset_out_price: Vec<u64>,
+        asset_id: u64,
+        is_surplus_auction: bool,
+        is_distributor: bool,
+        is_debt_auction: bool,
+        asset_out_oracle_price: bool,
+        asset_out_price: u64,
 
     },
     MsgWhitelistAppIdVaultInterest {
@@ -53,7 +53,7 @@ pub enum ComdexMessages {
     },
     MsgWhitelistAppIdLockerRewards {
         app_id: u64,
-        asset_ids: Vec<u64>,
+        asset_id: u64,
     },
     MsgUpdatePairsVault {
         app_id: u64,

@@ -15,7 +15,7 @@ const PRECISION_FACTOR: u128 = 1_000_000_000;
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct Config {
     pub threshold: Threshold,
-
+    pub locking_contract:Addr,
     pub target: String,
 }
 
@@ -34,7 +34,18 @@ pub struct AppProposalConfig {
 
     pub proposal: Proposal,
 }
+
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+
+#[serde(rename_all = "snake_case")]
+pub struct TokenSupply {
+    // total token in the system.
+    pub token: u128,
+    // total vtoken released, for the corresponding token, in the system
+    pub vtoken: u128,
+}
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+
 
 pub struct Proposal {
     pub title: String,
