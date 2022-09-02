@@ -20,3 +20,11 @@ thiserror = { version = "1.0.21" }
 [dev-dependencies]
 cw-storage-plus = { path = "../../packages/storage-plus", version = "0.13.2" }
 prost = "0.9"
+
+[profile.release]
+rpath = false
+lto = true
+overflow-checks = true
+opt-level = 3
+debug = false
+debug-assertions = false

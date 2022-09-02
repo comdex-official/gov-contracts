@@ -17,3 +17,11 @@ serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0" }
+
+[profile.release]
+rpath = false
+lto = true
+overflow-checks = true
+opt-level = 3
+debug = false
+debug-assertions = false
