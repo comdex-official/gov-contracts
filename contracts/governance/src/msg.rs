@@ -56,6 +56,13 @@ pub struct Propose {
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct AppProposalResponse {
+    pub proposals : Vec<ProposalResponseTotal>,
+    pub proposal_count : u64,
+}
+
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct ExtendedPair {
     pub app_mapping_id_param: u64,
     pub pair_id_param: u64,
@@ -114,6 +121,9 @@ pub enum QueryMsg {
     },
     ListAppProposal {
         app_id: u64,
+        start_after: u32,
+    limit: Option<u32>,
+    status: Option<Status>
     },
 
     AppAllUpData {

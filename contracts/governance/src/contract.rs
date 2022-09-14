@@ -1,7 +1,7 @@
 use crate::coin_helpers::assert_sent_sufficient_coin_deposit;
 use crate::error::ContractError;
 use crate::msg::{
-    ExecuteMsg, ExtendedPair, InstantiateMsg, ProposalResponseTotal, Propose, QueryMsg,SudoMsg,MigrateMsg
+    ExecuteMsg, ExtendedPair, InstantiateMsg, ProposalResponseTotal, Propose, QueryMsg,SudoMsg,MigrateMsg,AppProposalResponse
 };
 use crate::state::{
     next_id, AppGovConfig, Ballot, Config, Proposal, Votes, APPGOVCONFIG, APPPROPOSALS, BALLOTS,
@@ -553,6 +553,12 @@ pub fn execute_deposit(
     info: MessageInfo,
     proposal_id: u64,
 ) -> Result<Response<ComdexMessages>, ContractError> {
+
+    if info.funds.len()!=1 {
+        return Err(ContractError::CustomError {
+            val: "Funds deposit not allowed".to_string(),
+        });
+    }
     // Get proposal latest status
     let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
     let status = prop.current_status(&env.block);
@@ -735,8 +741,8 @@ pub fn query(deps: Deps<ComdexQuery>, env: Env, msg: QueryMsg) -> StdResult<Bina
             start_after,
             limit,
         } => to_binary(&list_votes(deps, proposal_id, start_after, limit)?),
-        QueryMsg::ListAppProposal { app_id } => {
-            to_binary(&get_proposals_by_app(deps, env, app_id)?)
+        QueryMsg::ListAppProposal { app_id,start_after,limit,status } => {
+            to_binary(&get_proposals_by_app(deps, env, app_id,start_after,limit,status)?)
         }
         QueryMsg::AppAllUpData { app_id } => to_binary(&get_all_up_info_by_app(deps, env, app_id)?),
 
@@ -779,7 +785,7 @@ fn query_proposal_detailed(
 
 // settings for pagination
 const MAX_LIMIT: u32 = 300;
-const DEFAULT_LIMIT: u32 = 10;
+const DEFAULT_LIMIT: u32 = 100;
 
 fn list_proposals(
     deps: Deps<ComdexQuery>,
@@ -802,20 +808,48 @@ fn get_proposals_by_app(
     deps: Deps<ComdexQuery>,
     env: Env,
     app_id: u64,
-) -> StdResult<Vec<ProposalResponseTotal>> {
-    let info = match PROPOSALSBYAPP.may_load(deps.storage, app_id)? {
+    start_after: u32,
+    limit: Option<u32>,
+    status: Option<Status>,
+) -> StdResult<AppProposalResponse> {
+    let mut info = match PROPOSALSBYAPP.may_load(deps.storage, app_id)? {
         Some(record) => record,
         None => vec![],
     };
 
     let mut all_proposals = vec![];
-
-    for i in info {
+    info.reverse() ;
+    for i in info{
         let proposal = query_proposal_detailed(deps, env.clone(), i)?;
-        all_proposals.push(proposal);
+        match status{
+            Some(status) => {if status == proposal.status {all_proposals.push(proposal.clone());}},
+            None => {all_proposals.push(proposal);}
+        }
+        
     }
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start = start_after as usize;
+    let checkpoint = start + limit;
+    let mut proposal=vec![];
+    if !all_proposals.is_empty()
+    {
+        
+            // If the vec len is smaller than start_after, then empty vec
+            // If the checkpoint is >= length, then return all remaining elements
+            // else return the specific elements
+            let length = all_proposals.len();
+            if length <= start {
+                proposal=vec![];
+            } else if checkpoint >= length {
+                proposal=all_proposals[start..].to_vec();
+            } else {
+                proposal=all_proposals[start..checkpoint].to_vec();
+            }
+    }
+    let proposal_length=all_proposals.len();
 
-    Ok(all_proposals)
+
+    Ok(AppProposalResponse{proposals:proposal,proposal_count:proposal_length as u64})
 }
 
 fn get_all_up_info_by_app(
@@ -1546,9 +1580,7 @@ mod tests {
         }}] }));
 
 
-        let res = get_proposals_by_app (deps.as_ref(),mock_env(),33).unwrap();
-        assert_eq!(res.to_vec().len(),0);
-
+        
         let res = reverse_proposals(deps.as_ref(),mock_env(),Option::None,Option::None);
         assert_eq!(res,Ok(ProposalListResponse{ proposals:vec![ProposalResponse{id:id,title:"prop".to_string(),description:"test prop".to_string(),msgs:vec![ComdexMessages::MsgWhitelistAppIdVaultInterest{app_id:33}],status:Status::Passed,expires:Expiration::AtTime(cosmwasm_std::Timestamp::from_nanos(1_655_745_430)),threshold: ThresholdResponse::ThresholdQuorum {
             threshold: Decimal::percent(50),
