@@ -556,7 +556,7 @@ pub fn execute_deposit(
 
     if info.funds.len()!=1 {
         return Err(ContractError::CustomError {
-            val: "Funds deposit not allowed".to_string(),
+            val: "Only single denom deposit is allowed".to_string(),
         });
     }
     // Get proposal latest status
