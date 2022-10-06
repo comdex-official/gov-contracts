@@ -1,18 +1,15 @@
 use crate::state::Votes;
 use comdex_bindings::ComdexMessages;
-use cosmwasm_std::{Decimal, Timestamp,Addr};
+use cosmwasm_std::{Addr, Decimal, Timestamp};
 use cw3::{Status, Vote};
 use cw_utils::{Duration, Expiration, Threshold};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-
-
-
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct InstantiateMsg {
     pub threshold: Threshold,
-    pub locking_contract:Addr,
+    pub locking_contract: String,
     pub target: String,
 }
 
@@ -57,10 +54,9 @@ pub struct Propose {
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct AppProposalResponse {
-    pub proposals : Vec<ProposalResponseTotal>,
-    pub proposal_count : u64,
+    pub proposals: Vec<ProposalResponseTotal>,
+    pub proposal_count: u64,
 }
-
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct ExtendedPair {
@@ -122,8 +118,8 @@ pub enum QueryMsg {
     ListAppProposal {
         app_id: u64,
         start_after: u32,
-    limit: Option<u32>,
-    status: Option<Status>
+        limit: Option<u32>,
+        status: Option<Status>,
     },
 
     AppAllUpData {
@@ -132,22 +128,18 @@ pub enum QueryMsg {
     Supply {
         denom: String,
     },
-    TotalVTokens
-    {
-        address:Addr,
-        denom:String,
-        height: Option<u64>
-    }
+    TotalVTokens {
+        address: Addr,
+        denom: String,
+        height: Option<u64>,
+    },
 }
-
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum SudoMsg {
-    UpdateLockingContract {
-        address: Addr,
-    },
-    UpdateThreshold{threshold : Threshold},
+    UpdateLockingContract { address: Addr },
+    UpdateThreshold { threshold: Threshold },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
