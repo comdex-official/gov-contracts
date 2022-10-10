@@ -62,10 +62,12 @@ pub enum ComdexMessages {
         closing_fee: Decimal,
         liquidation_penalty: Decimal,
         draw_down_fee: Decimal,
+        is_vault_active: bool,
         min_cr: Decimal,
         debt_ceiling: u64,
         debt_floor: u64,
         min_usd_value_left: u64,
+
     },
     MsgUpdateCollectorLookupTable {
         app_id: u64,
