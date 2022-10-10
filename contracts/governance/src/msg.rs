@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct InstantiateMsg {
     pub threshold: Threshold,
-    pub locking_contract: String,
+    pub locking_contract: Addr,
     pub target: String,
 }
 
