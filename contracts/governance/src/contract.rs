@@ -538,6 +538,11 @@ pub fn execute_deposit(
     let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
     let status = prop.current_status(&env.block);
 
+    // Validate sent tokens are the currect denom
+    if prop.token_denom != info.funds[0].denom {
+        return Err(ContractError::IncorrectDenomDeposit {});
+    };
+
     // only Open or Pending Proposals are eligible for deposit
 
     if [Status::Executed, Status::Rejected, Status::Passed]
@@ -574,6 +579,7 @@ pub fn execute_deposit(
         }
     }
 
+    prop.deposit.push(info.funds[0].clone());
     prop.current_deposit += deposit_amount;
 
     if Uint128::from(prop.current_deposit) > Uint128::from(prop.min_deposit) {
