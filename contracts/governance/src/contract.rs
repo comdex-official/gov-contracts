@@ -277,6 +277,7 @@ pub fn execute_propose(
             debt_ceiling: _,
             debt_floor: _,
             min_usd_value_left: _,
+            is_vault_active: _,
         } => update_pairvault_stability(deps.as_ref(), app_id, ext_pair_id, propose.app_id_param)?,
 
         ComdexMessages::MsgSetAuctionMappingForApp {
@@ -553,22 +554,18 @@ pub fn execute_deposit(
         None => vec![],
     };
     let mut deposit_amount: u128 = 0;
-    if deposit_info != vec![] {
+    if !deposit_info.is_empty() {
         for mut current_deposit_coin in deposit_info.clone() {
-            for new_deposit_coin in info.funds.clone() {
-                if new_deposit_coin.denom == current_deposit_coin.denom {
-                    current_deposit_coin.amount += new_deposit_coin.amount;
-                    deposit_amount = new_deposit_coin.amount.u128();
-                }
+            if info.funds[0].denom == current_deposit_coin.denom {
+                current_deposit_coin.amount += info.funds[0].amount;
+                deposit_amount = info.funds[0].amount.u128();
             }
         }
     } else {
         let mut is_correct_fund = false;
-        for deposit_iter in info.funds.clone() {
-            if prop.token_denom == deposit_iter.denom {
-                deposit_amount = deposit_iter.amount.u128();
-                is_correct_fund = true;
-            }
+        if prop.token_denom == info.funds[0].denom {
+            deposit_amount = info.funds[0].amount.u128();
+            is_correct_fund = true;
         }
         if is_correct_fund {
             deposit_info = info.funds;
@@ -968,8 +965,8 @@ mod tests {
     use crate::msg;
     use cosmwasm_std::testing::{mock_env, mock_info};
     use cosmwasm_std::testing::{MockApi, MockQuerier, MockStorage};
-    use cosmwasm_std::Decimal;
-    use cosmwasm_std::{Addr, OwnedDeps};
+    use cosmwasm_std::{coins, Addr, OwnedDeps};
+    use cosmwasm_std::{Decimal, Timestamp};
     use cw_storage_plus::Map;
     use cw_utils::Expiration;
     use cw_utils::{Duration, Threshold};
@@ -1664,5 +1661,92 @@ mod tests {
                 }]
             })
         );
+    }
+
+    #[allow(non_snake_case)]
+    #[test]
+    fn test_deposit_non_gov_token() {
+        // Mock deps
+        let mut env = mock_env();
+        let mut deps = mock_dependencies1();
+
+        let DENOM: &str = "DNM";
+        env.block.time = Timestamp::from_seconds(1000);
+        env.block.height = 10;
+
+        // Instantiate
+        let imsg = InstantiateMsg {
+            threshold: Threshold::ThresholdQuorum {
+                threshold: Decimal::one(),
+                quorum: Decimal::one(),
+            },
+            target: String::new(),
+            locking_contract: Addr::unchecked("locking-contract"),
+        };
+        let sender = Addr::unchecked("sender");
+        let info = mock_info(sender.as_str(), &[]);
+        instantiate(deps.as_mut(), env.clone(), info, imsg.clone()).unwrap();
+
+        // Save a proposal
+        let proposal = Proposal {
+            title: "title".to_string(),
+            start_time: Timestamp::from_seconds(1200),
+            description: "description".to_string(),
+            start_height: 10,
+            expires: Expiration::AtHeight(20),
+            msgs: vec![],
+            status: Status::Pending,
+            duration: Duration::Height(10),
+            threshold: imsg.threshold,
+            total_weight: 0,
+            votes: Votes {
+                yes: 0,
+                no: 0,
+                abstain: 0,
+                veto: 0,
+            },
+            deposit: vec![],
+            proposer: sender.to_string(),
+            token_denom: DENOM.to_string(),
+            min_deposit: 100,
+            current_deposit: 0,
+            app_mapping_id: 1,
+            is_slashed: false,
+        };
+
+        PROPOSALS.save(deps.as_mut().storage, 1, &proposal).unwrap();
+
+        // Deposit gov token
+        let info = mock_info(sender.as_str(), &coins(100, DENOM));
+        let result = execute_deposit(deps.as_mut(), env.clone(), info.clone(), 1).unwrap();
+        assert_eq!(result.messages.len(), 0);
+
+        // Check correct update in VOTERDEPOSIT
+        let sender_deposits = VOTERDEPOSIT
+            .load(deps.as_ref().storage, (1, &sender))
+            .unwrap();
+        assert_eq!(sender_deposits.len(), 1);
+        assert_eq!(sender_deposits[0].amount.u128(), 100);
+        assert_eq!(sender_deposits[0].denom, DENOM.to_string());
+
+        // Check correct update in PROPOSALS
+        let proposal_data = PROPOSALS.load(deps.as_ref().storage, 1).unwrap();
+        match proposal_data.status {
+            Status::Pending => {}
+            e => panic!("{:?}", e),
+        };
+        assert_eq!(proposal_data.current_deposit, 100u128);
+        // assert_eq!(proposal_data.deposit.len(), 1);
+        // assert_eq!(proposal_data.deposit[0].amount.u128(), 100u128);
+        // assert_eq!(proposal_data.deposit[0].denom, DENOM.to_string());
+
+        // Deposit non-gov token
+        let info = mock_info(sender.as_str(), &coins(100, "denom2"));
+        let result = execute_deposit(deps.as_mut(), env.clone(), info, 1).unwrap();
+
+        // Check no update in PROPOSALS
+        let proposal_data = PROPOSALS.load(deps.as_ref().storage, 1).unwrap();
+        assert_eq!(proposal_data.current_deposit, 100);
+        assert_eq!(proposal_data.deposit.len(), 1);
     }
 }
