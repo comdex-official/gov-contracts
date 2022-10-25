@@ -6,7 +6,7 @@ This is a base implementation of governance contract for Harbor Protocol . The c
 
 The contract uses the binding from package/bindings in the root directory to interact with Comdex Native Modules for Queries and Messages.
 
-## Instantiate
+## Instantiate Operation
 
 Instantiation governance contract requires the locking contract address.
 Thus, it is advised that the user first instantiate a locking contract and then
@@ -73,7 +73,7 @@ pub struct Propose {
 
 * `title` - Specifies the title of the proposal.
 * `description` - The body of the proposal with any details for the voter.
-* `msgs` - The msgs for implementing the proposal requirement(s). For example,
+* `msgs` - The msg for implementing the proposal requirement. For example,
 whitelisting an asset, etc.
 * `latest` - Specifies the proposal voting period before expiration.
 * `app_id_param` - application ID for which to raise this proposal.
@@ -87,12 +87,44 @@ Vote { proposal_id: u64, vote: Vote },
 Used to vote on an active proposal.
 
 * `proposal_id` - Used to specify the proposal ID that will be voted.
-* `vote` - Vote on the proposal from the 4 possible choices: *Yes*, *No*,
-*Abstain*, *Veto*.
+* `vote` - Vote on the proposal with one of the four possible choices: *Yes*, *No*, *Abstain*, *Veto*.
+
+### Execute
 
 ```rust
 Execute { proposal_id: u64 },
+```
+
+This is used when the proposal has successfully passed, i.e. fulfilled the
+threshold requirements. Cannot be executed if the proposal did not pass or was
+vetoed.
+
+### Refund
+
+```rust
 Refund { proposal_id: u64 },
+```
+
+This is used when the proposal failed to meet the threshold. Furthermore, can
+only be called if the proposal was not vetoed. All deposited tokens are refunded.
+
+### Deposit
+
+```rust
 Deposit { proposal_id: u64 },
+```
+
+Deposits the governance token to the proposal. Deposits are only allowed until
+the minimum deposit threshold is not met. All proposals require a minimum deposit
+before voting may begin.
+
+### Slash
+
+```rust
 Slash { proposal_id: u64 },
 ```
+
+When the proposal was voted by majority, then the deposits are burnt rather
+than refunding.
+
+## Query Operations
