@@ -290,9 +290,10 @@ Paginated query to list all past and present proposals in reverse order.
 
 **NOTE:** The default limit is **100** and the maximum limit is **300**.
 
-RESPONSE is same as the [previous](#listproposals) query.
+RESPONSE:
+The response of this query is same as the [ListProposals](#listproposals) query's response.
 
-### Vote {#query-vote}
+### Vote
 
 ```rust
 Vote {
@@ -343,7 +344,7 @@ pagination.
 
 RESPONSE:
 
-The response of this query is an array of vote info. Refer to the [previous](#query-vote)
+The response of this query is an array of vote info. Refer to the [Vote](#vote-1)
 query's response.
 
 ### ListAppProposal
