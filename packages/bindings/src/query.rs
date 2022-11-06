@@ -75,7 +75,7 @@ pub enum ComdexQuery {
     RemoveWhitelistAppIdLiquidationQuery {
         app_id: u64,
     },
-    AddESMTriggerParamsForAppQuery{
+    AddESMTriggerParamsForAppQuery {
         app_id: u64,
     },
 }

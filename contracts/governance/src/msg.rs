@@ -13,7 +13,7 @@ pub struct InstantiateMsg {
     pub target: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug,Eq)]
 pub struct Voter {
     pub addr: String,
     pub weight: u64,

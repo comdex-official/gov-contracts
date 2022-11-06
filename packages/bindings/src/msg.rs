@@ -46,7 +46,6 @@ pub enum ComdexMessages {
         is_debt_auction: bool,
         asset_out_oracle_price: bool,
         asset_out_price: u64,
-
     },
     MsgWhitelistAppIdVaultInterest {
         app_id: u64,
@@ -67,7 +66,6 @@ pub enum ComdexMessages {
         debt_ceiling: u64,
         debt_floor: u64,
         min_usd_value_left: u64,
-
     },
     MsgUpdateCollectorLookupTable {
         app_id: u64,
