@@ -1,4 +1,4 @@
-use cosmwasm_std::{Coin, CustomQuery, Decimal};
+use cosmwasm_std::{Coin, CustomQuery, Decimal,Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -47,8 +47,8 @@ pub enum ComdexQuery {
         stability_fee: Decimal,
         closing_fee: Decimal,
         draw_down_fee: Decimal,
-        debt_ceiling: u64,
-        debt_floor: u64,
+        debt_ceiling: Uint128,
+        debt_floor: Uint128,
         pair_name: String,
     },
     UpdatePairsVaultQuery {
