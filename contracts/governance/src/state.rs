@@ -15,11 +15,11 @@ const PRECISION_FACTOR: u128 = 1_000_000_000;
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct Config {
     pub threshold: Threshold,
-    pub locking_contract:Addr,
+    pub locking_contract: Addr,
     pub target: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug,Eq)]
 pub struct AppGovConfig {
     pub proposal_count: u64,
 
@@ -35,8 +35,7 @@ pub struct AppProposalConfig {
     pub proposal: Proposal,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug,Eq)]
 #[serde(rename_all = "snake_case")]
 pub struct TokenSupply {
     // total token in the system.
@@ -45,7 +44,6 @@ pub struct TokenSupply {
     pub vtoken: u128,
 }
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-
 
 pub struct Proposal {
     pub title: String,
@@ -196,7 +194,7 @@ impl Proposal {
 }
 
 // weight of votes for each option
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug,Eq)]
 pub struct Votes {
     pub yes: u128,
     pub no: u128,
@@ -268,11 +266,11 @@ pub const CONFIG: Item<Config> = Item::new("config");
 pub const PROPOSAL_COUNT: Item<u64> = Item::new("proposal_count");
 
 // multiple-item map
-pub const BALLOTS: Map<(u64, &Addr), Ballot> = Map::new("votes");
-pub const PROPOSALSBYAPP: Map<u64, Vec<u64>> = Map::new("ProposalsByApp");
+pub const BALLOTS: Map<(u64, &Addr), Ballot> = Map::new("ballots");
+pub const PROPOSALSBYAPP: Map<u64, Vec<u64>> = Map::new("proposals_by_app");
 pub const PROPOSALS: Map<u64, Proposal> = Map::new("proposals");
-pub const VOTERDEPOSIT: Map<(u64, &Addr), Vec<Coin>> = Map::new("voter deposit");
-pub const APPPROPOSALS: Map<u64, Vec<AppProposalConfig>> = Map::new("proposals-by-app");
+pub const VOTERDEPOSIT: Map<(u64, &Addr), Vec<Coin>> = Map::new("voter_deposit");
+pub const APPPROPOSALS: Map<u64, Vec<AppProposalConfig>> = Map::new("app_proposals");
 pub const APPGOVCONFIG: Map<u64, AppGovConfig> = Map::new("app_gov_config");
 
 pub fn next_id(store: &mut dyn Storage) -> StdResult<u64> {

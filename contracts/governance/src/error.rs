@@ -8,7 +8,6 @@ pub enum ContractError {
     #[error("Proposal is not eligible")]
     ProposalNotEligible {},
     #[error("Custom Error val: {val:?}")]
-
     CustomError { val: String },
 
     #[error("{0}")]
@@ -44,13 +43,12 @@ pub enum ContractError {
     #[error("No refund for failed proposal")]
     NonPassedProposalRefund {},
 
-
     #[error("No refund for pending proposal")]
     PendingProposal {},
 
     #[error("No refund for active proposal")]
     OpenProposal {},
-    
+
     #[error("No deposit record found for proposal")]
     NoDeposit {},
 

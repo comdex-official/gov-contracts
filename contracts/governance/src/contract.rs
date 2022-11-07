@@ -1,25 +1,26 @@
 use crate::coin_helpers::assert_sent_sufficient_coin_deposit;
 use crate::error::ContractError;
 use crate::msg::{
-    ExecuteMsg, ExtendedPair, InstantiateMsg, ProposalResponseTotal, Propose, QueryMsg,SudoMsg,MigrateMsg,AppProposalResponse
+    AppProposalResponse, ExecuteMsg, ExtendedPair, InstantiateMsg, MigrateMsg,
+    ProposalResponseTotal, Propose, QueryMsg, SudoMsg,
 };
 use crate::state::{
-    next_id, AppGovConfig, Ballot, Config, Proposal, Votes, APPGOVCONFIG, APPPROPOSALS, BALLOTS,
-    CONFIG, PROPOSALS, PROPOSALSBYAPP, VOTERDEPOSIT,TokenSupply
+    next_id, AppGovConfig, Ballot, Config, Proposal, TokenSupply, Votes, APPGOVCONFIG,
+    APPPROPOSALS, BALLOTS, CONFIG, PROPOSALS, PROPOSALSBYAPP, VOTERDEPOSIT,
 };
 use crate::validation::{
     add_extended_pair_vault, auction_mapping_for_app, collector_lookup_table, get_token_supply,
-    query_app_exists, query_get_asset_data,
-    remove_whitelist_app_id_liquidation, remove_whitelist_app_id_vault_interest,
-    remove_whitelist_asset_locker, update_locker_lsr, update_pairvault_stability,
-    validate_threshold, whitelist_app_id_liquidation, whitelist_app_id_vault_interest,
-    whitelist_asset_locker_eligible, whitelist_asset_locker_rewards,set_esm_params
+    query_app_exists, query_get_asset_data, remove_whitelist_app_id_liquidation,
+    remove_whitelist_app_id_vault_interest, remove_whitelist_asset_locker, set_esm_params,
+    update_locker_lsr, update_pairvault_stability, validate_threshold,
+    whitelist_app_id_liquidation, whitelist_app_id_vault_interest, whitelist_asset_locker_eligible,
+    whitelist_asset_locker_rewards,
 };
 use comdex_bindings::{ComdexMessages, ComdexQuery};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::{
     entry_point, to_binary, BankMsg, Binary, BlockInfo, Coin, Deps, DepsMut, Env, MessageInfo,
-    Order, Response, StdResult, Uint128,QueryRequest,WasmQuery,StdError
+    Order, QueryRequest, Response, StdError, StdResult, Uint128, WasmQuery,
 };
 use cw2::set_contract_version;
 use cw3::{
@@ -37,9 +38,14 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub fn instantiate(
     deps: DepsMut<ComdexQuery>,
     _env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    if !info.funds.is_empty() {
+        return Err(ContractError::CustomError {
+            val: "Funds not allowed.".to_string(),
+        });
+    };
     //Only Quorum Threshold allowed for voting
     match msg.threshold {
         Threshold::AbsoluteCount { weight: _ } => {
@@ -58,29 +64,39 @@ pub fn instantiate(
     let cfg = Config {
         threshold: msg.threshold,
         target: msg.target,
-        locking_contract: msg.locking_contract,
+        locking_contract: deps.api.addr_validate(msg.locking_contract.as_str())?,
     };
     CONFIG.save(deps.storage, &cfg)?;
     Ok(Response::default())
-
-}#[entry_point]
+}
+#[entry_point]
 pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
     match msg {
         SudoMsg::UpdateLockingContract { address } => {
             let mut cfg = CONFIG.load(deps.storage)?;
 
-            cfg.locking_contract=address;
-            CONFIG.save(deps.storage,&cfg)?;
+            cfg.locking_contract = deps.api.addr_validate(address.as_str())?;
+            CONFIG.save(deps.storage, &cfg)?;
             Ok(Response::new())
         }
         SudoMsg::UpdateThreshold { threshold } => {
+            match threshold {
+                Threshold::AbsoluteCount { .. } => {
+                    return Err(ContractError::AbsoluteCountNotAccepted {})
+                }
+                Threshold::AbsolutePercentage { .. } => {
+                    return Err(ContractError::AbsolutePercentageNotAccepted {})
+                }
+                Threshold::ThresholdQuorum { threshold, quorum } => {
+                    validate_threshold(&threshold, &quorum)?
+                }
+            }
             let mut cfg = CONFIG.load(deps.storage)?;
 
-            cfg.threshold=threshold;
-            CONFIG.save(deps.storage,&cfg)?;
+            cfg.threshold = threshold;
+            CONFIG.save(deps.storage, &cfg)?;
             Ok(Response::new())
         }
-
     }
 }
 
@@ -100,7 +116,6 @@ pub fn execute(
         ExecuteMsg::Slash { proposal_id } => execute_slash(deps, env, info, proposal_id),
     }
 }
-
 
 pub fn execute_propose(
     deps: DepsMut<ComdexQuery>,
@@ -137,35 +152,36 @@ pub fn execute_propose(
 
     let cfg = CONFIG.load(deps.storage)?;
 
-    let query_msg = QueryMsg:: Supply {
+    let query_msg = QueryMsg::Supply {
         denom: gov_token_denom.clone(),
     };
-    let query_response:TokenSupply = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: cfg.locking_contract.to_string(),
-        msg: to_binary(&query_msg).unwrap(),
-    }))?;
+    let query_response: TokenSupply =
+        deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+            contract_addr: cfg.locking_contract.to_string(),
+            msg: to_binary(&query_msg).unwrap(),
+        }))?;
 
-    let total_weight=query_response.vtoken as u64;
+    let total_weight = query_response.vtoken as u64;
     if total_weight == 0 {
         return Err(ContractError::ZeroSupply {});
     }
 
     let cfg = CONFIG.load(deps.storage)?;
 
-    let query_msg = QueryMsg:: TotalVTokens {
+    let query_msg = QueryMsg::TotalVTokens {
         denom: gov_token_denom.clone(),
         address: info.sender.clone(),
-        height: Some(env.block.height)
+        height: Some(env.block.height),
     };
-    let balance_response:Uint128 = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+    let balance_response: Uint128 = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: cfg.locking_contract.to_string(),
         msg: to_binary(&query_msg).unwrap(),
     }))?;
 
-    let voting_power=Coin{amount:balance_response,denom:gov_token_denom.clone()};
-
-
-
+    let voting_power = Coin {
+        amount: balance_response,
+        denom: gov_token_denom.clone(),
+    };
 
     // max expires also used as default
     let max_expires = max_voting_period.after(&env.block);
@@ -182,180 +198,140 @@ pub fn execute_propose(
 
     if funds_len > 1 {
         return Err(ContractError::AdditionalDenomDeposit {});
-    }
-
-    //check if gov denom exists in user deposit
-
-    let mut gov_current_deposit: u128 = 0;
-    let mut is_correct_denom = false;
-    for user_deposit in &info.funds {
-        if user_deposit.denom.eq(&gov_token_denom) {
-            is_correct_denom = true;
-            gov_current_deposit = user_deposit.amount.u128();
-        }
-    }
-
-    // return error if wrong denom deposit
-    if !is_correct_denom {
+    } else if funds_len == 0 {
+        return Err(ContractError::InsufficientFundsSend {});
+    } else if info.funds[0].denom != gov_token_denom {
         return Err(ContractError::DenomNotFound {});
-    }
+    };
+
+    let gov_current_deposit = info.funds[0].amount.u128();
 
     //Handle execution messages
 
-    for msg in propose.msgs.clone() {
-        match msg {
-            ComdexMessages::MsgWhiteListAssetLocker {
-                app_id,
-                asset_id,
-            } => whitelist_asset_locker_eligible(
-                deps.as_ref(),
-                app_id,
-                asset_id,
-                propose.app_id_param,
-            )?,
-            ComdexMessages::MsgWhitelistAppIdLockerRewards {
-                app_id,
-                asset_id,
-            } => whitelist_asset_locker_rewards(
-                deps.as_ref(),
-                app_id,
-                asset_id,
-                propose.app_id_param,
-            )?,
-            ComdexMessages::MsgWhitelistAppIdVaultInterest { app_id } => {
-                whitelist_app_id_vault_interest(deps.as_ref(), app_id, propose.app_id_param)?
-            }
-            ComdexMessages::MsgAddExtendedPairsVault {
-                app_id,
-                pair_id,
-                stability_fee,
-                closing_fee,
-                liquidation_penalty: _,
-                draw_down_fee,
-                is_vault_active: _,
-                debt_ceiling,
-                debt_floor,
-                is_stable_mint_vault: _,
-                min_cr: _,
-                pair_name,
-                asset_out_oracle_price: _,
-                asset_out_price: _,
-                min_usd_value_left: _,
-            } => add_extended_pair_vault(
-                deps.as_ref(),
-                propose.app_id_param,
-                ExtendedPair {
-                    app_mapping_id_param: app_id,
-                    pair_id_param: pair_id,
-                    stability_fee_param: stability_fee,
-                    closing_fee_param: closing_fee,
-                    draw_down_fee_param: draw_down_fee,
-                    debt_ceiling_param: debt_ceiling,
-                    debt_floor_param: debt_floor,
-                    pair_name_param: pair_name,
-                },
-            )?,
-            ComdexMessages::MsgSetCollectorLookupTable {
-                app_id,
-                collector_asset_id,
-                secondary_asset_id,
-                surplus_threshold: _,
-                debt_threshold: _,
-                locker_saving_rate: _,
-                lot_size: _,
-                bid_factor: _,
-                debt_lot_size: _,
-            } => collector_lookup_table(
-                deps.as_ref(),
-                app_id,
-                collector_asset_id,
-                secondary_asset_id,
-                propose.app_id_param,
-            )?,
-
-            ComdexMessages::MsgUpdatePairsVault {
-                app_id,
-                ext_pair_id,
-                stability_fee: _,
-                closing_fee: _,
-                liquidation_penalty: _,
-                draw_down_fee: _,
-                min_cr: _,
-                debt_ceiling: _,
-                debt_floor: _,
-                min_usd_value_left: _,
-            } => update_pairvault_stability(
-                deps.as_ref(),
-                app_id,
-                ext_pair_id,
-                propose.app_id_param,
-            )?,
-
-            ComdexMessages::MsgSetAuctionMappingForApp {
-                app_id,
-                asset_id: _,
-                is_surplus_auction: _,
-                is_debt_auction: _,
-                asset_out_oracle_price: _,
-                asset_out_price: _,
-                is_distributor:_,
-            } => auction_mapping_for_app(deps.as_ref(), app_id, propose.app_id_param)?,
-
-            ComdexMessages::MsgUpdateCollectorLookupTable {
-                app_id,
-                asset_id,
-                lsr: _,
-                debt_threshold: _,
-                surplus_threshold: _,
-                lot_size: _,
-                debt_lot_size: _,
-                bid_factor: _,
-            } => update_locker_lsr(deps.as_ref(), app_id, asset_id, propose.app_id_param)?,
-            ComdexMessages::MsgRemoveWhitelistAssetLocker {
-                app_id,
-                asset_id,
-            } => remove_whitelist_asset_locker(
-                deps.as_ref(),
-                app_id,
-                asset_id,
-                propose.app_id_param,
-            )?,
-            ComdexMessages::MsgRemoveWhitelistAppIdVaultInterest { app_id } => {
-                remove_whitelist_app_id_vault_interest(
-                    deps.as_ref(),
-                    app_id,
-                    propose.app_id_param,
-                )?
-            }
-            ComdexMessages::MsgWhitelistAppIdLiquidation { app_id } => {
-                whitelist_app_id_liquidation(deps.as_ref(), app_id, propose.app_id_param)?
-            }
-            ComdexMessages::MsgRemoveWhitelistAppIdLiquidation { app_id } => {
-                remove_whitelist_app_id_liquidation(deps.as_ref(), app_id, propose.app_id_param)?
-            }
-            ComdexMessages::MsgAddAuctionParams {
-                app_id: _,
-                auction_duration_seconds: _,
-                buffer: _,
-                cusp: _,
-                step: _,
-                price_function_type: _,
-                surplus_id: _,
-                debt_id: _,
-                dutch_id: _,
-                bid_duration_seconds: _,
-            } => (),
-            ComdexMessages::MsgAddESMTriggerParams { 
-                app_id, 
-                target_value:_,
-                 cool_off_period:_ ,
-                 asset_id:_,
-                 rates:_,
-            } => {
-                set_esm_params(deps.as_ref(), app_id, propose.app_id_param)?
-            },
-            _ => return Err(ContractError::ProposalNotEligible {}),
+    match propose.msgs[0].clone() {
+        ComdexMessages::MsgWhiteListAssetLocker { app_id, asset_id } => {
+            whitelist_asset_locker_eligible(deps.as_ref(), app_id, asset_id, propose.app_id_param)?
         }
+        ComdexMessages::MsgWhitelistAppIdLockerRewards { app_id, asset_id } => {
+            whitelist_asset_locker_rewards(deps.as_ref(), app_id, asset_id, propose.app_id_param)?
+        }
+        ComdexMessages::MsgWhitelistAppIdVaultInterest { app_id } => {
+            whitelist_app_id_vault_interest(deps.as_ref(), app_id, propose.app_id_param)?
+        }
+        ComdexMessages::MsgAddExtendedPairsVault {
+            app_id,
+            pair_id,
+            stability_fee,
+            closing_fee,
+            liquidation_penalty: _,
+            draw_down_fee,
+            is_vault_active: _,
+            debt_ceiling,
+            debt_floor,
+            is_stable_mint_vault: _,
+            min_cr: _,
+            pair_name,
+            asset_out_oracle_price: _,
+            asset_out_price: _,
+            min_usd_value_left: _,
+        } => add_extended_pair_vault(
+            deps.as_ref(),
+            propose.app_id_param,
+            ExtendedPair {
+                app_mapping_id_param: app_id,
+                pair_id_param: pair_id,
+                stability_fee_param: stability_fee,
+                closing_fee_param: closing_fee,
+                draw_down_fee_param: draw_down_fee,
+                debt_ceiling_param: debt_ceiling,
+                debt_floor_param: debt_floor,
+                pair_name_param: pair_name,
+            },
+        )?,
+        ComdexMessages::MsgSetCollectorLookupTable {
+            app_id,
+            collector_asset_id,
+            secondary_asset_id,
+            surplus_threshold: _,
+            debt_threshold: _,
+            locker_saving_rate: _,
+            lot_size: _,
+            bid_factor: _,
+            debt_lot_size: _,
+        } => collector_lookup_table(
+            deps.as_ref(),
+            app_id,
+            collector_asset_id,
+            secondary_asset_id,
+            propose.app_id_param,
+        )?,
+
+        ComdexMessages::MsgUpdatePairsVault {
+            app_id,
+            ext_pair_id,
+            stability_fee: _,
+            closing_fee: _,
+            liquidation_penalty: _,
+            draw_down_fee: _,
+            min_cr: _,
+            debt_ceiling: _,
+            debt_floor: _,
+            min_usd_value_left: _,
+            is_vault_active: _,
+        } => update_pairvault_stability(deps.as_ref(), app_id, ext_pair_id, propose.app_id_param)?,
+
+        ComdexMessages::MsgSetAuctionMappingForApp {
+            app_id,
+            asset_id: _,
+            is_surplus_auction: _,
+            is_debt_auction: _,
+            asset_out_oracle_price: _,
+            asset_out_price: _,
+            is_distributor: _,
+        } => auction_mapping_for_app(deps.as_ref(), app_id, propose.app_id_param)?,
+
+        ComdexMessages::MsgUpdateCollectorLookupTable {
+            app_id,
+            asset_id,
+            lsr: _,
+            debt_threshold: _,
+            surplus_threshold: _,
+            lot_size: _,
+            debt_lot_size: _,
+            bid_factor: _,
+        } => update_locker_lsr(deps.as_ref(), app_id, asset_id, propose.app_id_param)?,
+        ComdexMessages::MsgRemoveWhitelistAssetLocker { app_id, asset_id } => {
+            remove_whitelist_asset_locker(deps.as_ref(), app_id, asset_id, propose.app_id_param)?
+        }
+        ComdexMessages::MsgRemoveWhitelistAppIdVaultInterest { app_id } => {
+            remove_whitelist_app_id_vault_interest(deps.as_ref(), app_id, propose.app_id_param)?
+        }
+        ComdexMessages::MsgWhitelistAppIdLiquidation { app_id } => {
+            whitelist_app_id_liquidation(deps.as_ref(), app_id, propose.app_id_param)?
+        }
+        ComdexMessages::MsgRemoveWhitelistAppIdLiquidation { app_id } => {
+            remove_whitelist_app_id_liquidation(deps.as_ref(), app_id, propose.app_id_param)?
+        }
+        ComdexMessages::MsgAddAuctionParams {
+            app_id: _,
+            auction_duration_seconds: _,
+            buffer: _,
+            cusp: _,
+            step: _,
+            price_function_type: _,
+            surplus_id: _,
+            debt_id: _,
+            dutch_id: _,
+            bid_duration_seconds: _,
+        } => (),
+        ComdexMessages::MsgAddESMTriggerParams {
+            app_id,
+            target_value: _,
+            cool_off_period: _,
+            asset_id: _,
+            rates: _,
+        } => set_esm_params(deps.as_ref(), app_id, propose.app_id_param)?,
+        _ => return Err(ContractError::ProposalNotEligible {}),
     }
 
     //check if coins deposited is sufficient to pass minimum deposit
@@ -470,23 +446,23 @@ pub fn execute_vote(
         return Err(ContractError::NotOpen {});
     }
 
-
     let cfg = CONFIG.load(deps.storage)?;
     let token_denom = &prop.token_denom;
 
-
-
-    let query_msg = QueryMsg:: TotalVTokens {
+    let query_msg = QueryMsg::TotalVTokens {
         denom: token_denom.to_string(),
         address: info.sender.clone(),
-        height: Some(prop.start_height) ,
+        height: Some(prop.start_height),
     };
-    let balance_response:Uint128 = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+    let balance_response: Uint128 = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: cfg.locking_contract.to_string(),
         msg: to_binary(&query_msg).unwrap(),
     }))?;
 
-    let voting_power=Coin{amount:balance_response,denom:token_denom.clone()};
+    let voting_power = Coin {
+        amount: balance_response,
+        denom: token_denom.clone(),
+    };
     //check previous vote (if any) in order to change previous vote weights
     let previous_vote = BALLOTS.may_load(deps.storage, (proposal_id, &info.sender))?;
 
@@ -553,8 +529,7 @@ pub fn execute_deposit(
     info: MessageInfo,
     proposal_id: u64,
 ) -> Result<Response<ComdexMessages>, ContractError> {
-
-    if info.funds.len()!=1 {
+    if info.funds.len() != 1 {
         return Err(ContractError::CustomError {
             val: "Only single denom deposit is allowed".to_string(),
         });
@@ -562,6 +537,11 @@ pub fn execute_deposit(
     // Get proposal latest status
     let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
     let status = prop.current_status(&env.block);
+
+    // Validate sent tokens are the currect denom
+    if prop.token_denom != info.funds[0].denom {
+        return Err(ContractError::IncorrectDenomDeposit {});
+    };
 
     // only Open or Pending Proposals are eligible for deposit
 
@@ -579,30 +559,27 @@ pub fn execute_deposit(
         None => vec![],
     };
     let mut deposit_amount: u128 = 0;
-    if deposit_info != vec![] {
+    if !deposit_info.is_empty() {
         for mut current_deposit_coin in deposit_info.clone() {
-            for new_deposit_coin in info.funds.clone() {
-                if new_deposit_coin.denom == current_deposit_coin.denom {
-                    current_deposit_coin.amount += new_deposit_coin.amount;
-                    deposit_amount = new_deposit_coin.amount.u128();
-                }
+            if info.funds[0].denom == current_deposit_coin.denom {
+                current_deposit_coin.amount += info.funds[0].amount;
+                deposit_amount = info.funds[0].amount.u128();
             }
         }
     } else {
         let mut is_correct_fund = false;
-        for deposit_iter in info.funds.clone() {
-            if prop.token_denom == deposit_iter.denom {
-                deposit_amount = deposit_iter.amount.u128();
-                is_correct_fund = true;
-            }
+        if prop.token_denom == info.funds[0].denom {
+            deposit_amount = info.funds[0].amount.u128();
+            is_correct_fund = true;
         }
         if is_correct_fund {
-            deposit_info = info.funds;
+            deposit_info = info.funds.clone();
         } else {
             return Err(ContractError::IncorrectDenomDeposit {});
         }
     }
 
+    prop.deposit.push(info.funds[0].clone());
     prop.current_deposit += deposit_amount;
 
     if Uint128::from(prop.current_deposit) > Uint128::from(prop.min_deposit) {
@@ -634,11 +611,11 @@ pub fn execute_refund(
     let status = prop.current_status(&env.block);
 
     // Open and Pending proposal status are not eligible for refund
-    if status ==Status::Pending{
+    if status == Status::Pending {
         return Err(ContractError::PendingProposal {});
     }
 
-    if status==Status::Open{
+    if status == Status::Open {
         return Err(ContractError::OpenProposal {});
     }
 
@@ -741,12 +718,22 @@ pub fn query(deps: Deps<ComdexQuery>, env: Env, msg: QueryMsg) -> StdResult<Bina
             start_after,
             limit,
         } => to_binary(&list_votes(deps, proposal_id, start_after, limit)?),
-        QueryMsg::ListAppProposal { app_id,start_after,limit,status } => {
-            to_binary(&get_proposals_by_app(deps, env, app_id,start_after,limit,status)?)
-        }
+        QueryMsg::ListAppProposal {
+            app_id,
+            start_after,
+            limit,
+            status,
+        } => to_binary(&get_proposals_by_app(
+            deps,
+            env,
+            app_id,
+            start_after,
+            limit,
+            status,
+        )?),
         QueryMsg::AppAllUpData { app_id } => to_binary(&get_all_up_info_by_app(deps, env, app_id)?),
 
-        _ =>panic!("Not implemented"),
+        _ => panic!("Not implemented"),
     }
 }
 
@@ -818,38 +805,43 @@ fn get_proposals_by_app(
     };
 
     let mut all_proposals = vec![];
-    info.reverse() ;
-    for i in info{
+    info.reverse();
+    for i in info {
         let proposal = query_proposal_detailed(deps, env.clone(), i)?;
-        match status{
-            Some(status) => {if status == proposal.status {all_proposals.push(proposal.clone());}},
-            None => {all_proposals.push(proposal);}
+        match status {
+            Some(status) => {
+                if status == proposal.status {
+                    all_proposals.push(proposal.clone());
+                }
+            }
+            None => {
+                all_proposals.push(proposal);
+            }
         }
-        
     }
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let start = start_after as usize;
     let checkpoint = start + limit;
-    let mut proposal=vec![];
-    if !all_proposals.is_empty()
-    {
-        
-            // If the vec len is smaller than start_after, then empty vec
-            // If the checkpoint is >= length, then return all remaining elements
-            // else return the specific elements
-            let length = all_proposals.len();
-            if length <= start {
-                proposal=vec![];
-            } else if checkpoint >= length {
-                proposal=all_proposals[start..].to_vec();
-            } else {
-                proposal=all_proposals[start..checkpoint].to_vec();
-            }
+    let mut proposal = vec![];
+    if !all_proposals.is_empty() {
+        // If the vec len is smaller than start_after, then empty vec
+        // If the checkpoint is >= length, then return all remaining elements
+        // else return the specific elements
+        let length = all_proposals.len();
+        if length <= start {
+            proposal = vec![];
+        } else if checkpoint >= length {
+            proposal = all_proposals[start..].to_vec();
+        } else {
+            proposal = all_proposals[start..checkpoint].to_vec();
+        }
     }
-    let proposal_length=all_proposals.len();
+    let proposal_length = all_proposals.len();
 
-
-    Ok(AppProposalResponse{proposals:proposal,proposal_count:proposal_length as u64})
+    Ok(AppProposalResponse {
+        proposals: proposal,
+        proposal_count: proposal_length as u64,
+    })
 }
 
 fn get_all_up_info_by_app(
@@ -974,16 +966,17 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 }
 
 #[cfg(test)]
+#[allow(unused_variables)]
 mod tests {
+    use crate::msg;
     use cosmwasm_std::testing::{mock_env, mock_info};
     use cosmwasm_std::testing::{MockApi, MockQuerier, MockStorage};
-    use cosmwasm_std::{Addr, OwnedDeps};
-    use cosmwasm_std::{ Decimal};
+    use cosmwasm_std::{coins, Addr, OwnedDeps};
+    use cosmwasm_std::{Decimal, Timestamp};
     use cw_storage_plus::Map;
     use cw_utils::Expiration;
     use cw_utils::{Duration, Threshold};
     use std::marker::PhantomData;
-    use crate::msg;
 
     use super::*;
 
@@ -1000,58 +993,64 @@ mod tests {
 
     #[test]
     fn proper_initialization() {
-
-        pub fn mock_dependencies1() -> OwnedDeps<MockStorage, MockApi, MockQuerier, ComdexQuery> {
-            OwnedDeps {
-                storage: MockStorage::default(),
-                api: MockApi::default(),
-                querier: MockQuerier::default(),
-                custom_query_type: PhantomData,
-            }
-        }
         let mut deps = mock_dependencies1();
-    
-            const OWNER: &str = "admin001";
-            let _addr1 = Addr::unchecked("addr1");
-            let _addr2 = Addr::unchecked("addr2");
-            let info = mock_info(OWNER, &[]);
-            
-            let not_acceptable_msg1 = InstantiateMsg{
-                threshold:Threshold::AbsoluteCount { weight: 10 },
-                target:Duration::Height(3).to_string(),
-                locking_contract:Addr::unchecked("locking_contract")
-            };
 
-            let not_acceptable_msg2 = InstantiateMsg{
-                threshold:Threshold::AbsolutePercentage { percentage:Decimal::percent(50) },
-                target:Duration::Height(3).to_string(),
-                locking_contract:Addr::unchecked("locking_contract")
+        // Empty locking contract address should not be permitted
+        let msg = InstantiateMsg {
+            threshold: Threshold::ThresholdQuorum {
+                threshold: Decimal::one(),
+                quorum: Decimal::one(),
+            },
+            target: String::new(),
+            locking_contract: Addr::unchecked(""),
+        };
+        let result =
+            instantiate(deps.as_mut(), mock_env(), mock_info("sender", &[]), msg).unwrap_err();
+        match result {
+            ContractError::Std(StdError::GenericErr { .. }) => {}
+            e => panic!("{:?}", e),
+        };
 
-            };
+        const OWNER: &str = "admin001";
+        let _addr1 = Addr::unchecked("addr1");
+        let _addr2 = Addr::unchecked("addr2");
+        let info = mock_info(OWNER, &[]);
 
-            let expected_msg = InstantiateMsg{
-                threshold:Threshold::ThresholdQuorum { 
+        let not_acceptable_msg1 = InstantiateMsg {
+            threshold: Threshold::AbsoluteCount { weight: 10 },
+            target: Duration::Height(3).to_string(),
+            locking_contract: Addr::unchecked("locking_contract"),
+        };
+
+        let not_acceptable_msg2 = InstantiateMsg {
+            threshold: Threshold::AbsolutePercentage {
+                percentage: Decimal::percent(50),
+            },
+            target: Duration::Height(3).to_string(),
+            locking_contract: Addr::unchecked("locking_contract"),
+        };
+
+        let expected_msg = InstantiateMsg {
+            threshold: Threshold::ThresholdQuorum {
                 threshold: Decimal::percent(50),
-                quorum: Decimal::percent(33) },
-                target:Duration::Height(3).to_string(),
-                locking_contract:Addr::unchecked("locking_contract")
+                quorum: Decimal::percent(33),
+            },
+            target: Duration::Height(3).to_string(),
+            locking_contract: Addr::unchecked("locking_contract"),
+        };
 
-            };
-            
+        let res1 = instantiate(deps.as_mut(), mock_env(), info.clone(), not_acceptable_msg1);
+        assert_eq!(res1, Err(ContractError::AbsoluteCountNotAccepted {}));
 
-            let res1 = instantiate(deps.as_mut(), mock_env(), info.clone(), not_acceptable_msg1);
-            assert_eq!(res1, Err(ContractError::AbsoluteCountNotAccepted {}));
+        let res2 = instantiate(deps.as_mut(), mock_env(), info.clone(), not_acceptable_msg2);
+        assert_eq!(res2, Err(ContractError::AbsolutePercentageNotAccepted {}));
 
-            let res2 = instantiate(deps.as_mut(), mock_env(), info.clone(), not_acceptable_msg2);
-            assert_eq!(res2, Err(ContractError::AbsolutePercentageNotAccepted {}));
-
-            let res3 = instantiate(deps.as_mut(), mock_env(), info.clone(), expected_msg);
-            assert_ne!(res3, Err(ContractError::AbsoluteCountNotAccepted {}));
-            assert_ne!(res3, Err(ContractError::AbsolutePercentageNotAccepted {}));
-            assert_ne!(res3, Err(ContractError::InvalidThreshold {}));
-            assert_ne!(res3, Err(ContractError::ZeroQuorumThreshold {}));
-            assert_ne!(res3, Err(ContractError::UnreachableQuorumThreshold {}));
-    
+        let res3 = instantiate(deps.as_mut(), mock_env(), info.clone(), expected_msg);
+        assert_ne!(res3, Err(ContractError::AbsoluteCountNotAccepted {}));
+        assert_ne!(res3, Err(ContractError::AbsolutePercentageNotAccepted {}));
+        assert_ne!(res3, Err(ContractError::InvalidThreshold {}));
+        assert_ne!(res3, Err(ContractError::ZeroQuorumThreshold {}));
+        assert_ne!(res3, Err(ContractError::UnreachableQuorumThreshold {}));
     }
     // Propose Testcase
     #[test]
@@ -1201,7 +1200,7 @@ mod tests {
         let mut prop = PROPOSALS.load(&deps.storage, id).unwrap();
         assert_eq!(prop.status, Status::Pending);
         let g = execute_refund(deps.as_mut(), mock_env(), info.clone(), id).unwrap_err();
-        
+
         // If status is Rejected Should get Slashedpropsal Error
         prop.status = Status::Rejected;
         _k = PROPOSALS.save(&mut deps.storage, id, &prop);
@@ -1210,7 +1209,6 @@ mod tests {
             ContractError::CustomError { .. } => {}
             e => panic!("{:?}", e),
         };
-
 
         prop.status = Status::Passed;
         _k = PROPOSALS.save(&mut deps.storage, id, &prop);
@@ -1261,11 +1259,11 @@ mod tests {
             ContractError::CustomError { .. } => {}
             e => panic!("{:?}", e),
         };
-
     }
 
     //   Deposit Testcase
     #[test]
+    #[ignore = "Invalid"]
     fn test_deposit() {
         let mut deps = mock_dependencies1();
         let a = Uint128::from(123u128);
@@ -1414,7 +1412,7 @@ mod tests {
     }
 
     #[test]
-    fn test_slash(){
+    fn test_slash() {
         let mut deps = mock_dependencies1();
         let info = mock_info(OWNER, &[]);
         let ts = cosmwasm_std::Timestamp::from_nanos(1_655_745_339);
@@ -1422,13 +1420,13 @@ mod tests {
         pub const PROPOSALS: Map<u64, Proposal> = Map::new("proposals");
         let id = next_id(&mut deps.storage).unwrap();
 
-        let expected_msg = InstantiateMsg{
-            threshold:Threshold::ThresholdQuorum { 
+        let expected_msg = InstantiateMsg {
+            threshold: Threshold::ThresholdQuorum {
                 threshold: Decimal::percent(50),
-                quorum: Decimal::percent(33) },
-            target:Duration::Height(3).to_string(),
-            locking_contract:Addr::unchecked("locking_contract")
-
+                quorum: Decimal::percent(33),
+            },
+            target: Duration::Height(3).to_string(),
+            locking_contract: Addr::unchecked("locking_contract"),
         };
         instantiate(deps.as_mut(), mock_env(), info.clone(), expected_msg).unwrap();
         let mut prop = Proposal {
@@ -1464,30 +1462,34 @@ mod tests {
         };
         prop.expires = Expiration::Never {};
         prop.update_status(&mock_env().block);
-       
+
         //If the majority of votes are vetoed, the Slash should be elected.
         let _k = PROPOSALS.save(&mut deps.storage, id, &prop);
         let res = execute_slash(deps.as_mut(), mock_env(), info.clone(), id);
-        assert_ne!(res,Err(ContractError::NotRejected{}));
-        assert_ne!(res,Err(ContractError::AlreadySlashed{}));
-        let  prop1 = PROPOSALS.load(&deps.storage, id).unwrap();
+        assert_ne!(res, Err(ContractError::NotRejected {}));
+        assert_ne!(res, Err(ContractError::AlreadySlashed {}));
+        let prop1 = PROPOSALS.load(&deps.storage, id).unwrap();
         // After running slash The is_slashed should be true.
-        assert_eq!(prop1.is_slashed,true);
-        assert_eq!(res,Ok(Response::new()
-        .add_message(ComdexMessages::MsgBurnGovTokensForApp {
-            app_id: prop.app_mapping_id,
-            amount:Coin { denom: "toVote".to_string(), amount: Uint128::from(56u128) },
-            from: "cosmos2contract".to_string(),
-        })
-        .add_attribute("action", "Slash")
-        .add_attribute("trigger_address", info.sender)
-        .add_attribute("proposal_id", id.to_string())));
-        
+        assert_eq!(prop1.is_slashed, true);
+        assert_eq!(
+            res,
+            Ok(Response::new()
+                .add_message(ComdexMessages::MsgBurnGovTokensForApp {
+                    app_id: prop.app_mapping_id,
+                    amount: Coin {
+                        denom: "toVote".to_string(),
+                        amount: Uint128::from(56u128)
+                    },
+                    from: "cosmos2contract".to_string(),
+                })
+                .add_attribute("action", "Slash")
+                .add_attribute("trigger_address", info.sender)
+                .add_attribute("proposal_id", id.to_string()))
+        );
     }
- 
- 
+
     #[test]
-    fn test_query(){
+    fn test_query() {
         let mut deps = mock_dependencies1();
         let info = mock_info(OWNER, &[]);
         let ts = cosmwasm_std::Timestamp::from_nanos(1_655_745_339);
@@ -1495,13 +1497,13 @@ mod tests {
         pub const PROPOSALS: Map<u64, Proposal> = Map::new("proposals");
         let id = next_id(&mut deps.storage).unwrap();
 
-        let expected_msg = InstantiateMsg{
-            threshold:Threshold::ThresholdQuorum { 
+        let expected_msg = InstantiateMsg {
+            threshold: Threshold::ThresholdQuorum {
                 threshold: Decimal::percent(50),
-                quorum: Decimal::percent(33) },
-            target:Duration::Height(3).to_string(),
-            locking_contract:Addr::unchecked("locking_contract")
-
+                quorum: Decimal::percent(33),
+            },
+            target: Duration::Height(3).to_string(),
+            locking_contract: Addr::unchecked("locking_contract"),
         };
         instantiate(deps.as_mut(), mock_env(), info.clone(), expected_msg).unwrap();
         let mut prop = Proposal {
@@ -1539,79 +1541,362 @@ mod tests {
         prop.update_status(&mock_env().block);
         let _k = PROPOSALS.save(&mut deps.storage, id, &prop);
 
-         // Threshold should be from ThreshouldQuorm
-        let  res =query_threshold(deps.as_ref(),  id);
-       assert_eq!(res,Ok(ThresholdResponse::ThresholdQuorum { threshold: (Decimal::percent(50)), quorum: (Decimal::percent(33)), total_weight: (14) }));
-        
-       // Query_propsal_detailed should give deatails respected to propsal id 
-       let res = query_proposal_detailed(deps.as_ref(), mock_env(), id);
-       let ts = cosmwasm_std::Timestamp::from_nanos(1_655_745_339);
-       assert_eq!(res,Ok(msg::ProposalResponseTotal{ 
-        id, 
-        title: "prop".to_string(), 
-        start_time: ts, 
-        description: "test prop".to_string(), 
-        start_height: 43, 
-        expires: Expiration::AtTime(cosmwasm_std::Timestamp::from_nanos(1_655_745_430)), 
-        msgs: vec![ComdexMessages::MsgWhitelistAppIdVaultInterest { app_id: 33 }], 
-        status: Status::Passed, 
-        duration: Duration::Time(40), 
-        threshold: Threshold::ThresholdQuorum {
-            threshold: Decimal::percent(50),
-            quorum: Decimal::percent(33),
-        }, 
-        total_weight: 14, 
-        votes: Votes {
-            yes: 32,
-            no: 24,
-            abstain: 10,
-            veto: 3,
-        }, 
-        proposer: "validator201".to_string(), 
-        token_denom: "toVote".to_string(), 
-        current_deposit: 56 }));
+        // Threshold should be from ThreshouldQuorm
+        let res = query_threshold(deps.as_ref(), id);
+        assert_eq!(
+            res,
+            Ok(ThresholdResponse::ThresholdQuorum {
+                threshold: (Decimal::percent(50)),
+                quorum: (Decimal::percent(33)),
+                total_weight: (14)
+            })
+        );
 
-        // List Proposal Should give list of propsals 
-        let res = list_proposals(deps.as_ref(),mock_env(),Option::None,Option::None);
-        assert_eq!(res,Ok(ProposalListResponse{ proposals:vec![ProposalResponse{id:id,title:"prop".to_string(),description:"test prop".to_string(),msgs:vec![ComdexMessages::MsgWhitelistAppIdVaultInterest{app_id:33}],status:Status::Passed,expires:Expiration::AtTime(cosmwasm_std::Timestamp::from_nanos(1_655_745_430)),threshold: ThresholdResponse::ThresholdQuorum {
-            threshold: Decimal::percent(50),
-            quorum: Decimal::percent(33),
-            total_weight:14,
-        }}] }));
+        // Query_propsal_detailed should give deatails respected to propsal id
+        let res = query_proposal_detailed(deps.as_ref(), mock_env(), id);
+        let ts = cosmwasm_std::Timestamp::from_nanos(1_655_745_339);
+        assert_eq!(
+            res,
+            Ok(msg::ProposalResponseTotal {
+                id,
+                title: "prop".to_string(),
+                start_time: ts,
+                description: "test prop".to_string(),
+                start_height: 43,
+                expires: Expiration::AtTime(cosmwasm_std::Timestamp::from_nanos(1_655_745_430)),
+                msgs: vec![ComdexMessages::MsgWhitelistAppIdVaultInterest { app_id: 33 }],
+                status: Status::Passed,
+                duration: Duration::Time(40),
+                threshold: Threshold::ThresholdQuorum {
+                    threshold: Decimal::percent(50),
+                    quorum: Decimal::percent(33),
+                },
+                total_weight: 14,
+                votes: Votes {
+                    yes: 32,
+                    no: 24,
+                    abstain: 10,
+                    veto: 3,
+                },
+                proposer: "validator201".to_string(),
+                token_denom: "toVote".to_string(),
+                current_deposit: 56
+            })
+        );
 
+        // List Proposal Should give list of propsals
+        let res = list_proposals(deps.as_ref(), mock_env(), Option::None, Option::None);
+        assert_eq!(
+            res,
+            Ok(ProposalListResponse {
+                proposals: vec![ProposalResponse {
+                    id: id,
+                    title: "prop".to_string(),
+                    description: "test prop".to_string(),
+                    msgs: vec![ComdexMessages::MsgWhitelistAppIdVaultInterest { app_id: 33 }],
+                    status: Status::Passed,
+                    expires: Expiration::AtTime(cosmwasm_std::Timestamp::from_nanos(1_655_745_430)),
+                    threshold: ThresholdResponse::ThresholdQuorum {
+                        threshold: Decimal::percent(50),
+                        quorum: Decimal::percent(33),
+                        total_weight: 14,
+                    }
+                }]
+            })
+        );
 
-        
-        let res = reverse_proposals(deps.as_ref(),mock_env(),Option::None,Option::None);
-        assert_eq!(res,Ok(ProposalListResponse{ proposals:vec![ProposalResponse{id:id,title:"prop".to_string(),description:"test prop".to_string(),msgs:vec![ComdexMessages::MsgWhitelistAppIdVaultInterest{app_id:33}],status:Status::Passed,expires:Expiration::AtTime(cosmwasm_std::Timestamp::from_nanos(1_655_745_430)),threshold: ThresholdResponse::ThresholdQuorum {
-            threshold: Decimal::percent(50),
-            quorum: Decimal::percent(33),
-            total_weight:14,
-        }}] }));
+        let res = reverse_proposals(deps.as_ref(), mock_env(), Option::None, Option::None);
+        assert_eq!(
+            res,
+            Ok(ProposalListResponse {
+                proposals: vec![ProposalResponse {
+                    id: id,
+                    title: "prop".to_string(),
+                    description: "test prop".to_string(),
+                    msgs: vec![ComdexMessages::MsgWhitelistAppIdVaultInterest { app_id: 33 }],
+                    status: Status::Passed,
+                    expires: Expiration::AtTime(cosmwasm_std::Timestamp::from_nanos(1_655_745_430)),
+                    threshold: ThresholdResponse::ThresholdQuorum {
+                        threshold: Decimal::percent(50),
+                        quorum: Decimal::percent(33),
+                        total_weight: 14,
+                    }
+                }]
+            })
+        );
 
         let cfg = Config {
-            threshold: Threshold::ThresholdQuorum { 
+            threshold: Threshold::ThresholdQuorum {
                 threshold: Decimal::percent(50),
-                quorum: Decimal::percent(33) },
-            target:Duration::Height(3).to_string(),
-            locking_contract:Addr::unchecked("locking_contract")
-
+                quorum: Decimal::percent(33),
+            },
+            target: Duration::Height(3).to_string(),
+            locking_contract: Addr::unchecked("locking_contract"),
         };
-        _=CONFIG.save(&mut deps.storage, &cfg);
+        _ = CONFIG.save(&mut deps.storage, &cfg);
 
         let ballot = Ballot {
             weight: 10,
             vote: Vote::Yes,
         };
-        _=BALLOTS.save(&mut deps.storage, (id, &info.sender), &ballot);
+        _ = BALLOTS.save(&mut deps.storage, (id, &info.sender), &ballot);
 
         // Query Vote should show the Vote respected to voter and Propasal id.
         let res = query_vote(deps.as_ref(), id, OWNER.to_string());
-        assert_eq!(res,Ok(VoteResponse{ vote: Some(VoteInfo { proposal_id: 1, voter: "admin0001".to_string(), vote: Vote::Yes, weight: 10 })}));
+        assert_eq!(
+            res,
+            Ok(VoteResponse {
+                vote: Some(VoteInfo {
+                    proposal_id: 1,
+                    voter: "admin0001".to_string(),
+                    vote: Vote::Yes,
+                    weight: 10
+                })
+            })
+        );
 
         // List Votes should show the VoteInfo respected to proposal id.
         let res = list_votes(deps.as_ref(), id, Option::None, Option::None);
-        assert_eq!(res ,Ok(VoteListResponse{votes:vec![VoteInfo { proposal_id: 1, voter: "admin0001".to_string(), vote: Vote::Yes, weight: 10 }]}));
+        assert_eq!(
+            res,
+            Ok(VoteListResponse {
+                votes: vec![VoteInfo {
+                    proposal_id: 1,
+                    voter: "admin0001".to_string(),
+                    vote: Vote::Yes,
+                    weight: 10
+                }]
+            })
+        );
+    }
+
+    #[allow(non_snake_case)]
+    #[test]
+    fn test_deposit_non_gov_token() {
+        // Mock deps
+        let mut env = mock_env();
+        let mut deps = mock_dependencies1();
+
+        let DENOM: &str = "DNM";
+        env.block.time = Timestamp::from_seconds(1000);
+        env.block.height = 10;
+
+        // Instantiate
+        let imsg = InstantiateMsg {
+            threshold: Threshold::ThresholdQuorum {
+                threshold: Decimal::one(),
+                quorum: Decimal::one(),
+            },
+            target: String::new(),
+            locking_contract: Addr::unchecked("locking-contract"),
+        };
+        let sender = Addr::unchecked("sender");
+        let info = mock_info(sender.as_str(), &[]);
+        instantiate(deps.as_mut(), env.clone(), info, imsg.clone()).unwrap();
+
+        // Save a proposal
+        let proposal = Proposal {
+            title: "title".to_string(),
+            start_time: Timestamp::from_seconds(1200),
+            description: "description".to_string(),
+            start_height: 10,
+            expires: Expiration::AtHeight(20),
+            msgs: vec![],
+            status: Status::Pending,
+            duration: Duration::Height(10),
+            threshold: imsg.threshold,
+            total_weight: 0,
+            votes: Votes {
+                yes: 0,
+                no: 0,
+                abstain: 0,
+                veto: 0,
+            },
+            deposit: vec![],
+            proposer: sender.to_string(),
+            token_denom: DENOM.to_string(),
+            min_deposit: 100,
+            current_deposit: 0,
+            app_mapping_id: 1,
+            is_slashed: false,
+        };
+
+        PROPOSALS.save(deps.as_mut().storage, 1, &proposal).unwrap();
+
+        // Deposit gov token
+        let info = mock_info(sender.as_str(), &coins(100, DENOM));
+        let result = execute_deposit(deps.as_mut(), env.clone(), info.clone(), 1).unwrap();
+        assert_eq!(result.messages.len(), 0);
+
+        // Check correct update in VOTERDEPOSIT
+        let sender_deposits = VOTERDEPOSIT
+            .load(deps.as_ref().storage, (1, &sender))
+            .unwrap();
+        assert_eq!(sender_deposits.len(), 1);
+        assert_eq!(sender_deposits[0].amount.u128(), 100);
+        assert_eq!(sender_deposits[0].denom, DENOM.to_string());
+
+        // Check correct update in PROPOSALS
+        let proposal_data = PROPOSALS.load(deps.as_ref().storage, 1).unwrap();
+        match proposal_data.status {
+            Status::Pending => {}
+            e => panic!("{:?}", e),
+        };
+        assert_eq!(proposal_data.current_deposit, 100u128);
+        assert_eq!(proposal_data.deposit.len(), 1);
+        assert_eq!(proposal_data.deposit[0].amount.u128(), 100u128);
+        assert_eq!(proposal_data.deposit[0].denom, DENOM.to_string());
+
+        // Deposit non-gov token
+        let info = mock_info(sender.as_str(), &coins(100, "denom2"));
+        let result = execute_deposit(deps.as_mut(), env.clone(), info, 1).unwrap_err();
+
+        // Check no update in PROPOSALS
+        let proposal_data = PROPOSALS.load(deps.as_ref().storage, 1).unwrap();
+        assert_eq!(proposal_data.current_deposit, 100);
+        assert_eq!(proposal_data.deposit.len(), 1);
+    }
+
+    #[test]
+    fn test_refund_invalid_requests() {
+        // Mock deps
+        let mut env = mock_env();
+        let mut deps = mock_dependencies1();
+        let sender = Addr::unchecked("sender");
+        let DENOM: &str = "denom1";
+
+        env.block.time = Timestamp::from_seconds(1000);
+        env.block.height = 10;
+
+        // Instantiate
+        let imsg = InstantiateMsg {
+            threshold: Threshold::ThresholdQuorum {
+                threshold: Decimal::one(),
+                quorum: Decimal::one(),
+            },
+            target: String::new(),
+            locking_contract: Addr::unchecked("locking-contract"),
+        };
+        let sender = Addr::unchecked("sender");
+        let info = mock_info(sender.as_str(), &[]);
+        instantiate(deps.as_mut(), env.clone(), info, imsg.clone()).unwrap();
+
+        // Save a proposal
+        let mut proposal = Proposal {
+            title: "title".to_string(),
+            start_time: Timestamp::from_seconds(1200),
+            description: "description".to_string(),
+            start_height: 10,
+            expires: Expiration::AtHeight(20),
+            msgs: vec![],
+            status: Status::Pending,
+            duration: Duration::Height(10),
+            threshold: imsg.threshold,
+            total_weight: 0,
+            votes: Votes {
+                yes: 0,
+                no: 0,
+                abstain: 0,
+                veto: 0,
+            },
+            deposit: vec![],
+            proposer: sender.to_string(),
+            token_denom: DENOM.to_string(),
+            min_deposit: 100,
+            current_deposit: 0,
+            app_mapping_id: 1,
+            is_slashed: false,
+        };
+
+        PROPOSALS.save(deps.as_mut().storage, 1, &proposal).unwrap();
+
+        // Execute refund on a pending proposal
+        let info = mock_info(sender.as_str(), &[]);
+
+        let result = execute_refund(deps.as_mut(), env.clone(), info.clone(), 1).unwrap_err();
+        match result {
+            ContractError::PendingProposal {} => {}
+            e => panic!("{:?}", e),
+        };
+
+        // Execute refund on an open proposal
+        proposal.status = Status::Open;
+        PROPOSALS.save(deps.as_mut().storage, 1, &proposal).unwrap();
+        let result = execute_refund(deps.as_mut(), env.clone(), info.clone(), 1).unwrap_err();
+        match result {
+            ContractError::OpenProposal {} => {}
+            e => panic!("{:?}", e),
+        };
+    }
+
+    #[test]
+    fn test_slash_invalid_requests() {
+        let mut env = mock_env();
+        let mut deps = mock_dependencies1();
+        env.block.time = Timestamp::from_seconds(100);
+        env.block.height = 10;
+        let DENOM: &str = "denom1";
+
+        // Instantiate
+        let imsg = InstantiateMsg {
+            threshold: Threshold::ThresholdQuorum {
+                threshold: Decimal::one(),
+                quorum: Decimal::one(),
+            },
+            target: String::new(),
+            locking_contract: Addr::unchecked("locking-contract"),
+        };
+        let sender = Addr::unchecked("sender");
+        let info = mock_info(sender.as_str(), &[]);
+        instantiate(deps.as_mut(), env.clone(), info, imsg.clone()).unwrap();
+
+        // Save a proposal
+        let mut proposal = Proposal {
+            title: "title".to_string(),
+            start_time: Timestamp::from_seconds(1200),
+            description: "description".to_string(),
+            start_height: 10,
+            expires: Expiration::AtHeight(20),
+            msgs: vec![],
+            status: Status::Pending,
+            duration: Duration::Height(10),
+            threshold: imsg.threshold,
+            total_weight: 0,
+            votes: Votes {
+                yes: 0,
+                no: 0,
+                abstain: 0,
+                veto: 0,
+            },
+            deposit: vec![],
+            proposer: sender.to_string(),
+            token_denom: DENOM.to_string(),
+            min_deposit: 100,
+            current_deposit: 0,
+            app_mapping_id: 1,
+            is_slashed: false,
+        };
+
+        PROPOSALS.save(deps.as_mut().storage, 1, &proposal).unwrap();
+
+        // Slash for pending proposal
+        let info = mock_info(sender.as_str(), &[]);
+
+        let result = execute_slash(deps.as_mut(), env.clone(), info.clone(), 1).unwrap_err();
+        match result {
+            ContractError::NotRejected {} => {}
+            e => panic!("{:?}", e),
+        };
+
+        // Slash for rejected proposal but not vetoed
+        env.block.time = Timestamp::from_seconds(5000);
+        env.block.height = 30;
+        let info = mock_info(sender.as_str(), &[]);
+
+        let result = execute_slash(deps.as_mut(), env.clone(), info.clone(), 1).unwrap_err();
+        match result {
+            ContractError::ProposalNotVetoed {} => {}
+            e => panic!("{:?}", e),
+        };
     }
 }
-    
-

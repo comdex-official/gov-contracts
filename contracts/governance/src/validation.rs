@@ -412,3 +412,48 @@ pub fn get_token_supply(
 
     Ok(total_token_supply.current_supply)
 }
+
+#[cfg(test)]
+mod validation_tests {
+    use super::*;
+
+    #[test]
+    fn test_threshold() {
+        let threshold = Decimal::one();
+        let quorum = Decimal::from_ratio(3u8, 4u8);
+
+        // simple validation with correct values
+        validate_threshold(&threshold, &quorum).unwrap();
+
+        // FAILURES
+        // threshold greater than 100%
+        let result =
+            validate_threshold(&Decimal::from_atomics(11u128, 1).unwrap(), &quorum).unwrap_err();
+        match result {
+            ContractError::InvalidThreshold {} => {}
+            e => panic!("{:?}", e),
+        };
+
+        // quorum greater than 100%
+        let result =
+            validate_threshold(&Decimal::one(), &Decimal::from_ratio(2u8, 1u8)).unwrap_err();
+        match result {
+            ContractError::UnreachableQuorumThreshold {} => {}
+            e => panic!("{:?}", e),
+        };
+
+        // threshold is zero
+        let result = validate_threshold(&Decimal::zero(), &Decimal::one()).unwrap_err();
+        match result {
+            ContractError::InvalidThreshold {} => {}
+            e => panic!("{:?}", e),
+        };
+
+        // quorum is zero
+        let result = validate_threshold(&Decimal::one(), &Decimal::zero()).unwrap_err();
+        match result {
+            ContractError::ZeroQuorumThreshold {} => {}
+            e => panic!("{:?}", e),
+        };
+    }
+}
