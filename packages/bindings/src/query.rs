@@ -97,7 +97,7 @@ pub struct TotalSupplyResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct GetAppResponse {
-    pub min_gov_deposit: u64,
+    pub min_gov_deposit: Uint128,
     pub gov_time_in_seconds: u64,
     pub gov_token_id: u64,
 }
