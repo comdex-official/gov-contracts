@@ -16,10 +16,9 @@ const PRECISION_FACTOR: u128 = 1_000_000_000;
 pub struct Config {
     pub threshold: Threshold,
     pub locking_contract: Addr,
-    pub target: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug,Eq)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Eq)]
 pub struct AppGovConfig {
     pub proposal_count: u64,
 
@@ -35,7 +34,7 @@ pub struct AppProposalConfig {
     pub proposal: Proposal,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug,Eq)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Eq)]
 #[serde(rename_all = "snake_case")]
 pub struct TokenSupply {
     // total token in the system.
@@ -194,7 +193,7 @@ impl Proposal {
 }
 
 // weight of votes for each option
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug,Eq)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Eq)]
 pub struct Votes {
     pub yes: u128,
     pub no: u128,
