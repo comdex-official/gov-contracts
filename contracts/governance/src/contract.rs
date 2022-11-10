@@ -4,6 +4,7 @@ use crate::msg::{
     AppProposalResponse, ExecuteMsg, ExtendedPair, InstantiateMsg, MigrateMsg,
     ProposalResponseTotal, Propose, QueryMsg, SudoMsg,
 };
+use std::str::FromStr;
 use crate::state::{
     next_id, AppGovConfig, Ballot, Config, Proposal, TokenSupply, Votes, APPGOVCONFIG,
     APPPROPOSALS, BALLOTS, CONFIG, PROPOSALS, PROPOSALSBYAPP, VOTERDEPOSIT,
@@ -135,7 +136,6 @@ pub fn execute_propose(
     if msg_length > 1 {
         return Err(ContractError::ExtraMessages {});
     }
-
     //get app data for app_id
     let app_response = query_app_exists(deps.as_ref(), propose.app_id_param)?;
 
@@ -337,7 +337,7 @@ pub fn execute_propose(
     //check if coins deposited is sufficient to pass minimum deposit
     //if minimum deposit is achieved ,propsal status becomes "Open" else it becomes "Pending"
     let min_deposit = Coin {
-        amount: Uint128::from(min_gov_deposit),
+        amount: Uint128::from_str(&min_gov_deposit)?,
         denom: gov_token_denom.clone(),
     };
     let deposit_status = assert_sent_sufficient_coin_deposit(&info.funds, Some(min_deposit))?;
@@ -358,7 +358,7 @@ pub fn execute_propose(
         deposit: info.funds.clone(),
         proposer: info.sender.to_string(),
         token_denom: gov_token_denom,
-        min_deposit: min_gov_deposit,
+        min_deposit: Uint128::from_str(&min_gov_deposit)?,
         current_deposit: gov_current_deposit,
         app_mapping_id: propose.app_id_param,
         is_slashed: false,
@@ -1123,7 +1123,7 @@ mod tests {
             }],
             proposer: "validator201".to_string(),
             token_denom: "toVote".to_string(),
-            min_deposit: 45,
+            min_deposit: Uint128::from(45_u64),
             current_deposit: 56,
             app_mapping_id: id,
             is_slashed: true,
@@ -1190,7 +1190,7 @@ mod tests {
             }],
             proposer: "validator201".to_string(),
             token_denom: "toVote".to_string(),
-            min_deposit: 33,
+            min_deposit: Uint128::from(33_u64),
             current_deposit: 56,
             app_mapping_id: id,
             is_slashed: false,
@@ -1305,7 +1305,7 @@ mod tests {
             }],
             proposer: "validator201".to_string(),
             token_denom: "toVote".to_string(),
-            min_deposit: 45,
+            min_deposit: Uint128::from(45_u64),
             current_deposit: 56,
             app_mapping_id: id,
             is_slashed: true,
@@ -1383,7 +1383,7 @@ mod tests {
             }],
             proposer: "validator201".to_string(),
             token_denom: "toVote".to_string(),
-            min_deposit: 45,
+            min_deposit: Uint128::from(45_u64),
             current_deposit: 56,
             app_mapping_id: id,
             is_slashed: false,
@@ -1455,7 +1455,7 @@ mod tests {
             }],
             proposer: "validator201".to_string(),
             token_denom: "toVote".to_string(),
-            min_deposit: 45,
+            min_deposit: Uint128::from(45_u64),
             current_deposit: 56,
             app_mapping_id: 33,
             is_slashed: false,
@@ -1532,7 +1532,7 @@ mod tests {
             }],
             proposer: "validator201".to_string(),
             token_denom: "toVote".to_string(),
-            min_deposit: 45,
+            min_deposit: Uint128::from(45_u64),
             current_deposit: 56,
             app_mapping_id: 33,
             is_slashed: true,
@@ -1715,7 +1715,7 @@ mod tests {
             deposit: vec![],
             proposer: sender.to_string(),
             token_denom: DENOM.to_string(),
-            min_deposit: 100,
+            min_deposit: Uint128::from(100_u64),
             current_deposit: 0,
             app_mapping_id: 1,
             is_slashed: false,
@@ -1802,7 +1802,7 @@ mod tests {
             deposit: vec![],
             proposer: sender.to_string(),
             token_denom: DENOM.to_string(),
-            min_deposit: 100,
+            min_deposit: Uint128::from(100_u64),
             current_deposit: 0,
             app_mapping_id: 1,
             is_slashed: false,
@@ -1871,7 +1871,7 @@ mod tests {
             deposit: vec![],
             proposer: sender.to_string(),
             token_denom: DENOM.to_string(),
-            min_deposit: 100,
+            min_deposit: Uint128::from(100_u64),
             current_deposit: 0,
             app_mapping_id: 1,
             is_slashed: false,
@@ -1899,4 +1899,6 @@ mod tests {
             e => panic!("{:?}", e),
         };
     }
+    
+
 }

@@ -1,4 +1,4 @@
-use cosmwasm_std::{Coin, CosmosMsg, CustomMsg, Decimal};
+use cosmwasm_std::{Coin, CosmosMsg, CustomMsg, Decimal, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -18,8 +18,8 @@ pub enum ComdexMessages {
         liquidation_penalty: Decimal,
         draw_down_fee: Decimal,
         is_vault_active: bool,
-        debt_ceiling: u64,
-        debt_floor: u64,
+        debt_ceiling: Uint128,
+        debt_floor: Uint128,
         is_stable_mint_vault: bool,
         min_cr: Decimal,
         pair_name: String,
@@ -31,12 +31,12 @@ pub enum ComdexMessages {
         app_id: u64,
         collector_asset_id: u64,
         secondary_asset_id: u64,
-        surplus_threshold: u64,
-        debt_threshold: u64,
+        surplus_threshold: Uint128,
+        debt_threshold: Uint128,
         locker_saving_rate: Decimal,
-        lot_size: u64,
+        lot_size: Uint128,
         bid_factor: Decimal,
-        debt_lot_size: u64,
+        debt_lot_size: Uint128,
     },
     MsgSetAuctionMappingForApp {
         app_id: u64,
@@ -63,18 +63,18 @@ pub enum ComdexMessages {
         draw_down_fee: Decimal,
         is_vault_active: bool,
         min_cr: Decimal,
-        debt_ceiling: u64,
-        debt_floor: u64,
+        debt_ceiling: Uint128,
+        debt_floor: Uint128,
         min_usd_value_left: u64,
     },
     MsgUpdateCollectorLookupTable {
         app_id: u64,
         asset_id: u64,
         lsr: Decimal,
-        debt_threshold: u64,
-        surplus_threshold: u64,
-        lot_size: u64,
-        debt_lot_size: u64,
+        debt_threshold: Uint128,
+        surplus_threshold: Uint128,
+        lot_size: Uint128,
+        debt_lot_size: Uint128,
         bid_factor: Decimal,
     },
     MsgRemoveWhitelistAssetLocker {

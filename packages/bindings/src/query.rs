@@ -1,4 +1,4 @@
-use cosmwasm_std::{Coin, CustomQuery, Decimal};
+use cosmwasm_std::{Coin, CustomQuery, Decimal,Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -47,8 +47,8 @@ pub enum ComdexQuery {
         stability_fee: Decimal,
         closing_fee: Decimal,
         draw_down_fee: Decimal,
-        debt_ceiling: u64,
-        debt_floor: u64,
+        debt_ceiling: Uint128,
+        debt_floor: Uint128,
         pair_name: String,
     },
     UpdatePairsVaultQuery {
@@ -97,7 +97,7 @@ pub struct TotalSupplyResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct GetAppResponse {
-    pub min_gov_deposit: u64,
+    pub min_gov_deposit: String,
     pub gov_time_in_seconds: u64,
     pub gov_token_id: u64,
 }

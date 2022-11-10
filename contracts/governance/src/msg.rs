@@ -1,6 +1,6 @@
 use crate::state::Votes;
 use comdex_bindings::ComdexMessages;
-use cosmwasm_std::{Addr, Decimal, Timestamp};
+use cosmwasm_std::{Addr, Decimal, Timestamp,Uint128};
 use cw3::{Status, Vote};
 use cw_utils::{Duration, Expiration, Threshold};
 use schemars::JsonSchema;
@@ -65,8 +65,8 @@ pub struct ExtendedPair {
     pub stability_fee_param: Decimal,
     pub closing_fee_param: Decimal,
     pub draw_down_fee_param: Decimal,
-    pub debt_ceiling_param: u64,
-    pub debt_floor_param: u64,
+    pub debt_ceiling_param: Uint128,
+    pub debt_floor_param: Uint128,
     pub pair_name_param: String,
 }
 

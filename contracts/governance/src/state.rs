@@ -63,7 +63,7 @@ pub struct Proposal {
     pub deposit: Vec<Coin>,
     pub proposer: String,
     pub token_denom: String,
-    pub min_deposit: u64,
+    pub min_deposit: Uint128,
     pub current_deposit: u128,
     pub app_mapping_id: u64,
     pub is_slashed: bool,
