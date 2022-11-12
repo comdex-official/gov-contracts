@@ -64,7 +64,6 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let cfg = Config {
         threshold: msg.threshold,
-        target: msg.target,
         locking_contract: deps.api.addr_validate(msg.locking_contract.as_str())?,
     };
     CONFIG.save(deps.storage, &cfg)?;
@@ -1001,7 +1000,6 @@ mod tests {
                 threshold: Decimal::one(),
                 quorum: Decimal::one(),
             },
-            target: String::new(),
             locking_contract: Addr::unchecked(""),
         };
         let result =
@@ -1018,7 +1016,6 @@ mod tests {
 
         let not_acceptable_msg1 = InstantiateMsg {
             threshold: Threshold::AbsoluteCount { weight: 10 },
-            target: Duration::Height(3).to_string(),
             locking_contract: Addr::unchecked("locking_contract"),
         };
 
@@ -1026,7 +1023,6 @@ mod tests {
             threshold: Threshold::AbsolutePercentage {
                 percentage: Decimal::percent(50),
             },
-            target: Duration::Height(3).to_string(),
             locking_contract: Addr::unchecked("locking_contract"),
         };
 
@@ -1035,7 +1031,6 @@ mod tests {
                 threshold: Decimal::percent(50),
                 quorum: Decimal::percent(33),
             },
-            target: Duration::Height(3).to_string(),
             locking_contract: Addr::unchecked("locking_contract"),
         };
 
@@ -1425,7 +1420,6 @@ mod tests {
                 threshold: Decimal::percent(50),
                 quorum: Decimal::percent(33),
             },
-            target: Duration::Height(3).to_string(),
             locking_contract: Addr::unchecked("locking_contract"),
         };
         instantiate(deps.as_mut(), mock_env(), info.clone(), expected_msg).unwrap();
@@ -1502,7 +1496,6 @@ mod tests {
                 threshold: Decimal::percent(50),
                 quorum: Decimal::percent(33),
             },
-            target: Duration::Height(3).to_string(),
             locking_contract: Addr::unchecked("locking_contract"),
         };
         instantiate(deps.as_mut(), mock_env(), info.clone(), expected_msg).unwrap();
@@ -1630,7 +1623,6 @@ mod tests {
                 threshold: Decimal::percent(50),
                 quorum: Decimal::percent(33),
             },
-            target: Duration::Height(3).to_string(),
             locking_contract: Addr::unchecked("locking_contract"),
         };
         _ = CONFIG.save(&mut deps.storage, &cfg);
@@ -1687,7 +1679,6 @@ mod tests {
                 threshold: Decimal::one(),
                 quorum: Decimal::one(),
             },
-            target: String::new(),
             locking_contract: Addr::unchecked("locking-contract"),
         };
         let sender = Addr::unchecked("sender");
@@ -1774,7 +1765,6 @@ mod tests {
                 threshold: Decimal::one(),
                 quorum: Decimal::one(),
             },
-            target: String::new(),
             locking_contract: Addr::unchecked("locking-contract"),
         };
         let sender = Addr::unchecked("sender");
@@ -1843,7 +1833,6 @@ mod tests {
                 threshold: Decimal::one(),
                 quorum: Decimal::one(),
             },
-            target: String::new(),
             locking_contract: Addr::unchecked("locking-contract"),
         };
         let sender = Addr::unchecked("sender");

@@ -1,6 +1,6 @@
 use crate::state::Votes;
 use comdex_bindings::ComdexMessages;
-use cosmwasm_std::{Addr, Decimal, Timestamp,Uint128};
+use cosmwasm_std::{Addr, Decimal, Timestamp, Uint128};
 use cw3::{Status, Vote};
 use cw_utils::{Duration, Expiration, Threshold};
 use schemars::JsonSchema;
@@ -10,10 +10,9 @@ use serde::{Deserialize, Serialize};
 pub struct InstantiateMsg {
     pub threshold: Threshold,
     pub locking_contract: Addr,
-    pub target: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug,Eq)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Eq)]
 pub struct Voter {
     pub addr: String,
     pub weight: u64,
