@@ -559,7 +559,7 @@ pub fn execute_deposit(
     };
     let mut deposit_amount: u128 = 0;
     if !deposit_info.is_empty() {
-        for mut current_deposit_coin in deposit_info.clone() {
+        for  current_deposit_coin in deposit_info.iter_mut() {
             if info.funds[0].denom == current_deposit_coin.denom {
                 current_deposit_coin.amount += info.funds[0].amount;
                 deposit_amount = info.funds[0].amount.u128();
