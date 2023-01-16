@@ -4,10 +4,9 @@ use crate::msg::{
     AppProposalResponse, ExecuteMsg, ExtendedPair, InstantiateMsg, MigrateMsg,
     ProposalResponseTotal, Propose, QueryMsg, SudoMsg,
 };
-use std::str::FromStr;
 use crate::state::{
-    next_id, AppGovConfig, Ballot, Config, Proposal, TokenSupply, Votes, APPGOVCONFIG,
-    APPPROPOSALS, BALLOTS, CONFIG, PROPOSALS, PROPOSALSBYAPP, VOTERDEPOSIT,
+    next_id, AppGovConfig, AppGovConfigResponse, Ballot, Config, Proposal, TokenSupply, Votes,
+    APPGOVCONFIG, APPPROPOSALS, BALLOTS, CONFIG, PROPOSALS, PROPOSALSBYAPP, VOTERDEPOSIT,
 };
 use crate::validation::{
     add_extended_pair_vault, auction_mapping_for_app, collector_lookup_table, get_token_supply,
@@ -18,6 +17,7 @@ use crate::validation::{
     whitelist_asset_locker_rewards,
 };
 use comdex_bindings::{ComdexMessages, ComdexQuery};
+use cosmwasm_std::Decimal;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::{
     entry_point, to_binary, BankMsg, Binary, BlockInfo, Coin, Deps, DepsMut, Env, MessageInfo,
@@ -30,6 +30,8 @@ use cw3::{
 use cw_storage_plus::Bound;
 use cw_utils::{Duration, Threshold, ThresholdResponse};
 use std::cmp::Ordering;
+use std::ops::Div;
+use std::str::FromStr;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:governance";
@@ -559,7 +561,7 @@ pub fn execute_deposit(
     };
     let mut deposit_amount: u128 = 0;
     if !deposit_info.is_empty() {
-        for  current_deposit_coin in deposit_info.iter_mut() {
+        for current_deposit_coin in deposit_info.iter_mut() {
             if info.funds[0].denom == current_deposit_coin.denom {
                 current_deposit_coin.amount += info.funds[0].amount;
                 deposit_amount = info.funds[0].amount.u128();
@@ -731,7 +733,10 @@ pub fn query(deps: Deps<ComdexQuery>, env: Env, msg: QueryMsg) -> StdResult<Bina
             status,
         )?),
         QueryMsg::AppAllUpData { app_id } => to_binary(&get_all_up_info_by_app(deps, env, app_id)?),
-
+        QueryMsg::Config {} => to_binary(&query_config(deps)?),
+        QueryMsg::ParticipationStats { app_id } => {
+            to_binary(&get_all_up_info_by_app_ratio(deps, env, app_id)?)
+        }
         _ => panic!("Not implemented"),
     }
 }
@@ -741,6 +746,12 @@ fn query_threshold(deps: Deps<ComdexQuery>, proposal_id: u64) -> StdResult<Thres
     let prop = PROPOSALS.load(deps.storage, proposal_id)?;
 
     Ok(cfg.threshold.to_response(prop.total_weight))
+}
+
+fn query_config(deps: Deps<ComdexQuery>) -> StdResult<Config> {
+    let cfg = CONFIG.load(deps.storage)?;
+
+    Ok(cfg)
 }
 
 fn query_proposal_detailed(
@@ -859,14 +870,50 @@ fn get_all_up_info_by_app(
 
     let mut participation_info = APPGOVCONFIG.may_load(deps.storage, app_id)?.unwrap();
     let mut total_votes_weight: u128 = 0;
+
     for i in info {
         let proposal = query_proposal_detailed(deps, env.clone(), i)?;
         total_votes_weight += proposal.votes.total();
     }
     participation_info.current_supply = Uint128::from(total_weight).u128();
     participation_info.active_participation_supply = total_votes_weight;
-
+    participation_info.current_supply += 1;
     Ok(participation_info)
+}
+
+fn get_all_up_info_by_app_ratio(
+    deps: Deps<ComdexQuery>,
+    env: Env,
+    app_id: u64,
+) -> StdResult<AppGovConfigResponse> {
+    let info = match PROPOSALSBYAPP.may_load(deps.storage, app_id)? {
+        Some(record) => record,
+        None => vec![],
+    };
+
+    let app_response = query_app_exists(deps, app_id)?;
+    let gov_token_id = app_response.gov_token_id;
+    let total_weight = get_token_supply(deps, app_id, gov_token_id)?;
+
+    let mut participation_info = APPGOVCONFIG.may_load(deps.storage, app_id)?.unwrap();
+    let mut total_votes_weight: u128 = 0;
+    let mut total_target_weight: u128 = 0;
+
+    for i in info {
+        let proposal = query_proposal_detailed(deps, env.clone(), i)?;
+        total_votes_weight += proposal.votes.total();
+        total_target_weight += proposal.total_weight;
+    }
+    let ratio = Decimal::raw(total_votes_weight).div(Decimal::raw(total_target_weight));
+
+    participation_info.current_supply = Uint128::from(total_weight).u128();
+    participation_info.active_participation_supply = total_votes_weight;
+    let response = AppGovConfigResponse {
+        proposal_count: participation_info.proposal_count,
+        current_supply: participation_info.current_supply,
+        active_participation: ratio,
+    };
+    Ok(response)
 }
 
 fn reverse_proposals(
@@ -1888,6 +1935,4 @@ mod tests {
             e => panic!("{:?}", e),
         };
     }
-    
-
 }

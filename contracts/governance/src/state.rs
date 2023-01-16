@@ -27,6 +27,15 @@ pub struct AppGovConfig {
     pub active_participation_supply: u128,
 }
 
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Eq)]
+pub struct AppGovConfigResponse {
+    pub proposal_count: u64,
+
+    pub current_supply: u128,
+
+    pub active_participation: Decimal,
+}
+
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct AppProposalConfig {
     pub proposal_id: u64,

@@ -132,6 +132,10 @@ pub enum QueryMsg {
         denom: String,
         height: Option<u64>,
     },
+    Config {},
+    ParticipationStats {
+        app_id: u64,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
