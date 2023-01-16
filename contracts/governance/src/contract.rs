@@ -877,7 +877,7 @@ fn get_all_up_info_by_app(
     }
     participation_info.current_supply = Uint128::from(total_weight).u128();
     participation_info.active_participation_supply = total_votes_weight;
-    participation_info.current_supply += 1;
+    participation_info.proposal_count += 1;
     Ok(participation_info)
 }
 
