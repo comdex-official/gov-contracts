@@ -17,11 +17,10 @@ use crate::validation::{
     whitelist_asset_locker_rewards,
 };
 use comdex_bindings::{ComdexMessages, ComdexQuery};
-use cosmwasm_std::Decimal;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::{
     entry_point, to_binary, BankMsg, Binary, BlockInfo, Coin, Deps, DepsMut, Env, MessageInfo,
-    Order, QueryRequest, Response, StdError, StdResult, Uint128, WasmQuery,
+    Order, QueryRequest, Response, StdError, StdResult, Uint128, WasmQuery,Decimal
 };
 use cw2::set_contract_version;
 use cw3::{
