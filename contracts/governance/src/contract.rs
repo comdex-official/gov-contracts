@@ -20,7 +20,7 @@ use comdex_bindings::{ComdexMessages, ComdexQuery};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::{
     entry_point, to_binary, BankMsg, Binary, BlockInfo, Coin, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Order, QueryRequest, Response, StdError, StdResult, Uint128, WasmQuery,
+    MessageInfo, Order, QueryRequest, Response, StdError, StdResult, Uint128, WasmQuery,CosmosMsg
 };
 use cw2::set_contract_version;
 use cw3::{
@@ -1003,7 +1003,7 @@ fn list_votes(
 }
 
 #[entry_point]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     let ver = cw2::get_contract_version(deps.storage)?;
     // ensure we are migrating from an allowed contract
     if ver.contract != CONTRACT_NAME {
@@ -1014,12 +1014,19 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
         return Err(StdError::generic_err("Cannot upgrade from a newer version").into());
     }
 
+    let msg = BankMsg::Send {
+        to_address: msg.refund_address.to_string(),
+        amount: vec![Coin{amount:Uint128::from(10000000000_u128),denom: "uharbor".to_string()}],
+    };
+
+    let cosmos_msg = CosmosMsg::Bank(msg);
+
     // set the new version
     cw2::set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     // do any desired state migrations...
 
-    Ok(Response::default())
+    Ok(Response::new().add_message(cosmos_msg))
 }
 
 #[cfg(test)]
