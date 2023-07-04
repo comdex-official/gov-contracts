@@ -19,8 +19,8 @@ use crate::validation::{
 use comdex_bindings::{ComdexMessages, ComdexQuery};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::{
-    entry_point, to_binary, BankMsg, Binary, BlockInfo, Coin, Deps, DepsMut, Env, MessageInfo,
-    Order, QueryRequest, Response, StdError, StdResult, Uint128, WasmQuery,Decimal
+    entry_point, to_binary, BankMsg, Binary, BlockInfo, Coin, Decimal, Deps, DepsMut, Env,
+    MessageInfo, Order, QueryRequest, Response, StdError, StdResult, Uint128, WasmQuery,CosmosMsg
 };
 use cw2::set_contract_version;
 use cw3::{
@@ -124,18 +124,6 @@ pub fn execute_propose(
     info: MessageInfo,
     propose: Propose,
 ) -> Result<Response<ComdexMessages>, ContractError> {
-    // get proposal message length
-    let msg_length = propose.msgs.len();
-
-    //throw empty message error
-    if propose.msgs.is_empty() {
-        return Err(ContractError::NoMessage {});
-    }
-
-    // should be only 1 message
-    if msg_length > 1 {
-        return Err(ContractError::ExtraMessages {});
-    }
     //get app data for app_id
     let app_response = query_app_exists(deps.as_ref(), propose.app_id_param)?;
 
@@ -207,131 +195,152 @@ pub fn execute_propose(
     let gov_current_deposit = info.funds[0].amount.u128();
 
     //Handle execution messages
+    for message in propose.msgs.clone() {
+        match message {
+            ComdexMessages::MsgWhiteListAssetLocker { app_id, asset_id } => {
+                whitelist_asset_locker_eligible(
+                    deps.as_ref(),
+                    app_id,
+                    asset_id,
+                    propose.app_id_param,
+                )?
+            }
+            ComdexMessages::MsgWhitelistAppIdLockerRewards { app_id, asset_id } => {
+                whitelist_asset_locker_rewards(
+                    deps.as_ref(),
+                    app_id,
+                    asset_id,
+                    propose.app_id_param,
+                )?
+            }
+            ComdexMessages::MsgWhitelistAppIdVaultInterest { app_id } => {
+                whitelist_app_id_vault_interest(deps.as_ref(), app_id, propose.app_id_param)?
+            }
+            ComdexMessages::MsgAddExtendedPairsVault {
+                app_id,
+                pair_id,
+                stability_fee,
+                closing_fee,
+                liquidation_penalty: _,
+                draw_down_fee,
+                is_vault_active: _,
+                debt_ceiling,
+                debt_floor,
+                is_stable_mint_vault: _,
+                min_cr: _,
+                pair_name,
+                asset_out_oracle_price: _,
+                asset_out_price: _,
+                min_usd_value_left: _,
+            } => add_extended_pair_vault(
+                deps.as_ref(),
+                propose.app_id_param,
+                ExtendedPair {
+                    app_mapping_id_param: app_id,
+                    pair_id_param: pair_id,
+                    stability_fee_param: stability_fee,
+                    closing_fee_param: closing_fee,
+                    draw_down_fee_param: draw_down_fee,
+                    debt_ceiling_param: debt_ceiling,
+                    debt_floor_param: debt_floor,
+                    pair_name_param: pair_name,
+                },
+            )?,
+            ComdexMessages::MsgSetCollectorLookupTable {
+                app_id,
+                collector_asset_id,
+                secondary_asset_id,
+                surplus_threshold: _,
+                debt_threshold: _,
+                locker_saving_rate: _,
+                lot_size: _,
+                bid_factor: _,
+                debt_lot_size: _,
+            } => collector_lookup_table(
+                deps.as_ref(),
+                app_id,
+                collector_asset_id,
+                secondary_asset_id,
+                propose.app_id_param,
+            )?,
 
-    match propose.msgs[0].clone() {
-        ComdexMessages::MsgWhiteListAssetLocker { app_id, asset_id } => {
-            whitelist_asset_locker_eligible(deps.as_ref(), app_id, asset_id, propose.app_id_param)?
-        }
-        ComdexMessages::MsgWhitelistAppIdLockerRewards { app_id, asset_id } => {
-            whitelist_asset_locker_rewards(deps.as_ref(), app_id, asset_id, propose.app_id_param)?
-        }
-        ComdexMessages::MsgWhitelistAppIdVaultInterest { app_id } => {
-            whitelist_app_id_vault_interest(deps.as_ref(), app_id, propose.app_id_param)?
-        }
-        ComdexMessages::MsgAddExtendedPairsVault {
-            app_id,
-            pair_id,
-            stability_fee,
-            closing_fee,
-            liquidation_penalty: _,
-            draw_down_fee,
-            is_vault_active: _,
-            debt_ceiling,
-            debt_floor,
-            is_stable_mint_vault: _,
-            min_cr: _,
-            pair_name,
-            asset_out_oracle_price: _,
-            asset_out_price: _,
-            min_usd_value_left: _,
-        } => add_extended_pair_vault(
-            deps.as_ref(),
-            propose.app_id_param,
-            ExtendedPair {
-                app_mapping_id_param: app_id,
-                pair_id_param: pair_id,
-                stability_fee_param: stability_fee,
-                closing_fee_param: closing_fee,
-                draw_down_fee_param: draw_down_fee,
-                debt_ceiling_param: debt_ceiling,
-                debt_floor_param: debt_floor,
-                pair_name_param: pair_name,
-            },
-        )?,
-        ComdexMessages::MsgSetCollectorLookupTable {
-            app_id,
-            collector_asset_id,
-            secondary_asset_id,
-            surplus_threshold: _,
-            debt_threshold: _,
-            locker_saving_rate: _,
-            lot_size: _,
-            bid_factor: _,
-            debt_lot_size: _,
-        } => collector_lookup_table(
-            deps.as_ref(),
-            app_id,
-            collector_asset_id,
-            secondary_asset_id,
-            propose.app_id_param,
-        )?,
+            ComdexMessages::MsgUpdatePairsVault {
+                app_id,
+                ext_pair_id,
+                stability_fee: _,
+                closing_fee: _,
+                liquidation_penalty: _,
+                draw_down_fee: _,
+                min_cr: _,
+                debt_ceiling: _,
+                debt_floor: _,
+                min_usd_value_left: _,
+                is_vault_active: _,
+            } => update_pairvault_stability(
+                deps.as_ref(),
+                app_id,
+                ext_pair_id,
+                propose.app_id_param,
+            )?,
 
-        ComdexMessages::MsgUpdatePairsVault {
-            app_id,
-            ext_pair_id,
-            stability_fee: _,
-            closing_fee: _,
-            liquidation_penalty: _,
-            draw_down_fee: _,
-            min_cr: _,
-            debt_ceiling: _,
-            debt_floor: _,
-            min_usd_value_left: _,
-            is_vault_active: _,
-        } => update_pairvault_stability(deps.as_ref(), app_id, ext_pair_id, propose.app_id_param)?,
+            ComdexMessages::MsgSetAuctionMappingForApp {
+                app_id,
+                asset_id: _,
+                is_surplus_auction: _,
+                is_debt_auction: _,
+                asset_out_oracle_price: _,
+                asset_out_price: _,
+                is_distributor: _,
+            } => auction_mapping_for_app(deps.as_ref(), app_id, propose.app_id_param)?,
 
-        ComdexMessages::MsgSetAuctionMappingForApp {
-            app_id,
-            asset_id: _,
-            is_surplus_auction: _,
-            is_debt_auction: _,
-            asset_out_oracle_price: _,
-            asset_out_price: _,
-            is_distributor: _,
-        } => auction_mapping_for_app(deps.as_ref(), app_id, propose.app_id_param)?,
-
-        ComdexMessages::MsgUpdateCollectorLookupTable {
-            app_id,
-            asset_id,
-            lsr: _,
-            debt_threshold: _,
-            surplus_threshold: _,
-            lot_size: _,
-            debt_lot_size: _,
-            bid_factor: _,
-        } => update_locker_lsr(deps.as_ref(), app_id, asset_id, propose.app_id_param)?,
-        ComdexMessages::MsgRemoveWhitelistAssetLocker { app_id, asset_id } => {
-            remove_whitelist_asset_locker(deps.as_ref(), app_id, asset_id, propose.app_id_param)?
+            ComdexMessages::MsgUpdateCollectorLookupTable {
+                app_id,
+                asset_id,
+                lsr: _,
+                debt_threshold: _,
+                surplus_threshold: _,
+                lot_size: _,
+                debt_lot_size: _,
+                bid_factor: _,
+            } => update_locker_lsr(deps.as_ref(), app_id, asset_id, propose.app_id_param)?,
+            ComdexMessages::MsgRemoveWhitelistAssetLocker { app_id, asset_id } => {
+                remove_whitelist_asset_locker(
+                    deps.as_ref(),
+                    app_id,
+                    asset_id,
+                    propose.app_id_param,
+                )?
+            }
+            ComdexMessages::MsgRemoveWhitelistAppIdVaultInterest { app_id } => {
+                remove_whitelist_app_id_vault_interest(deps.as_ref(), app_id, propose.app_id_param)?
+            }
+            ComdexMessages::MsgWhitelistAppIdLiquidation { app_id } => {
+                whitelist_app_id_liquidation(deps.as_ref(), app_id, propose.app_id_param)?
+            }
+            ComdexMessages::MsgRemoveWhitelistAppIdLiquidation { app_id } => {
+                remove_whitelist_app_id_liquidation(deps.as_ref(), app_id, propose.app_id_param)?
+            }
+            ComdexMessages::MsgAddAuctionParams {
+                app_id: _,
+                auction_duration_seconds: _,
+                buffer: _,
+                cusp: _,
+                step: _,
+                price_function_type: _,
+                surplus_id: _,
+                debt_id: _,
+                dutch_id: _,
+                bid_duration_seconds: _,
+            } => (),
+            ComdexMessages::MsgAddESMTriggerParams {
+                app_id,
+                target_value: _,
+                cool_off_period: _,
+                asset_id: _,
+                rates: _,
+            } => set_esm_params(deps.as_ref(), app_id, propose.app_id_param)?,
+            _ => return Err(ContractError::ProposalNotEligible {}),
         }
-        ComdexMessages::MsgRemoveWhitelistAppIdVaultInterest { app_id } => {
-            remove_whitelist_app_id_vault_interest(deps.as_ref(), app_id, propose.app_id_param)?
-        }
-        ComdexMessages::MsgWhitelistAppIdLiquidation { app_id } => {
-            whitelist_app_id_liquidation(deps.as_ref(), app_id, propose.app_id_param)?
-        }
-        ComdexMessages::MsgRemoveWhitelistAppIdLiquidation { app_id } => {
-            remove_whitelist_app_id_liquidation(deps.as_ref(), app_id, propose.app_id_param)?
-        }
-        ComdexMessages::MsgAddAuctionParams {
-            app_id: _,
-            auction_duration_seconds: _,
-            buffer: _,
-            cusp: _,
-            step: _,
-            price_function_type: _,
-            surplus_id: _,
-            debt_id: _,
-            dutch_id: _,
-            bid_duration_seconds: _,
-        } => (),
-        ComdexMessages::MsgAddESMTriggerParams {
-            app_id,
-            target_value: _,
-            cool_off_period: _,
-            asset_id: _,
-            rates: _,
-        } => set_esm_params(deps.as_ref(), app_id, propose.app_id_param)?,
-        _ => return Err(ContractError::ProposalNotEligible {}),
     }
 
     //check if coins deposited is sufficient to pass minimum deposit
@@ -511,6 +520,9 @@ pub fn execute_execute(
         return Err(ContractError::WrongExecuteStatus {});
     }
 
+    if prop.msgs.is_empty() {
+        return Err(ContractError::NoMessage {});
+    }
     //Set it to executed
     prop.status = Status::Executed;
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
@@ -991,7 +1003,7 @@ fn list_votes(
 }
 
 #[entry_point]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     let ver = cw2::get_contract_version(deps.storage)?;
     // ensure we are migrating from an allowed contract
     if ver.contract != CONTRACT_NAME {
@@ -1002,12 +1014,19 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
         return Err(StdError::generic_err("Cannot upgrade from a newer version").into());
     }
 
+    let msg = BankMsg::Send {
+        to_address: msg.refund_address.to_string(),
+        amount: vec![Coin{amount:Uint128::from(10000000000_u128),denom: "uharbor".to_string()}],
+    };
+
+    let cosmos_msg = CosmosMsg::Bank(msg);
+
     // set the new version
     cw2::set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     // do any desired state migrations...
 
-    Ok(Response::default())
+    Ok(Response::new().add_message(cosmos_msg))
 }
 
 #[cfg(test)]
@@ -1115,7 +1134,6 @@ mod tests {
 
         //let msgs_length=msgs_com.len();
         let k = execute_propose(deps.as_mut(), mock_env(), info.clone(), propose_1);
-        assert_eq!(k, Err(ContractError::ExtraMessages {}));
         let msgs_2: Vec<ComdexMessages> = vec![];
         let propose_2 = Propose {
             title: "propose".to_string(),
@@ -1126,7 +1144,6 @@ mod tests {
             app_id_param: 33,
         };
         let f = execute_propose(deps.as_mut(), mock_env(), info, propose_2);
-        assert_eq!(f, Err(ContractError::NoMessage {}));
     }
 
     //Execute Testcase
@@ -1800,7 +1817,7 @@ mod tests {
         let mut env = mock_env();
         let mut deps = mock_dependencies1();
         let sender = Addr::unchecked("sender");
-        let DENOM: &str = "denom1";
+        let denom: &str = "denom1";
 
         env.block.time = Timestamp::from_seconds(1000);
         env.block.height = 10;
@@ -1837,7 +1854,7 @@ mod tests {
             },
             deposit: vec![],
             proposer: sender.to_string(),
-            token_denom: DENOM.to_string(),
+            token_denom: denom.to_string(),
             min_deposit: Uint128::from(100_u64),
             current_deposit: 0,
             app_mapping_id: 1,
@@ -1871,7 +1888,7 @@ mod tests {
         let mut deps = mock_dependencies1();
         env.block.time = Timestamp::from_seconds(100);
         env.block.height = 10;
-        let DENOM: &str = "denom1";
+        let denom: &str = "denom1";
 
         // Instantiate
         let imsg = InstantiateMsg {
@@ -1886,7 +1903,7 @@ mod tests {
         instantiate(deps.as_mut(), env.clone(), info, imsg.clone()).unwrap();
 
         // Save a proposal
-        let mut proposal = Proposal {
+        let proposal = Proposal {
             title: "title".to_string(),
             start_time: Timestamp::from_seconds(1200),
             description: "description".to_string(),
@@ -1905,7 +1922,7 @@ mod tests {
             },
             deposit: vec![],
             proposer: sender.to_string(),
-            token_denom: DENOM.to_string(),
+            token_denom: denom.to_string(),
             min_deposit: Uint128::from(100_u64),
             current_deposit: 0,
             app_mapping_id: 1,
